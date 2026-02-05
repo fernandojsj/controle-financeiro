@@ -81,20 +81,30 @@ def categorizar_gasto(estabelecimento: str) -> str:
     return "Outros"
 
 def processar_texto_notificacao(texto: str):
-    # Regex genérico
-    padrao = r"(?:R\$|BRL)\s?(?P<valor>[\d,.]+)\s(?:em|no|na)\s(?P<local>.+)"
-    match = re.search(padrao, texto, re.IGNORECASE)
+    # Múltiplos padrões para diferentes formatos de notificação
+    padroes = [
+        r"(?:R\$|BRL)\s?([\d,.]+)\s+(?:em|no|na|de)\s+(.+?)(?:\.|$)",
+        r"(?:compra|pagamento|transação).*?(?:R\$|BRL)\s?([\d,.]+).*?(?:em|no|na|de)\s+(.+?)(?:\.|$)",
+        r"(?:aprovad[oa]).*?(?:R\$|BRL)\s?([\d,.]+).*?(?:em|no|na|de)\s+(.+?)(?:\.|$)",
+        r"(?:R\$|BRL)\s?([\d,.]+)\s+-\s+(.+?)(?:\.|$)",
+    ]
     
-    if match:
-        valor_str = match.group("valor").replace('.', '').replace(',', '.')
-        estabelecimento = match.group("local").strip()
-        
-        return {
-            "valor": float(valor_str),
-            "estabelecimento": estabelecimento,
-            "categoria": categorizar_gasto(estabelecimento), # Nova inteligência
-            "sucesso": True
-        }
+    for padrao in padroes:
+        match = re.search(padrao, texto, re.IGNORECASE | re.DOTALL)
+        if match:
+            valor_str = match.group(1).replace('.', '').replace(',', '.')
+            estabelecimento = match.group(2).strip()
+            
+            # Limpa o estabelecimento
+            estabelecimento = re.sub(r'\s+', ' ', estabelecimento)
+            estabelecimento = estabelecimento.split('\n')[0].strip()
+            
+            return {
+                "valor": float(valor_str),
+                "estabelecimento": estabelecimento,
+                "categoria": categorizar_gasto(estabelecimento),
+                "sucesso": True
+            }
     
     return {
         "valor": 0.0, 
