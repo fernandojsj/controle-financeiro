@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  finance-app:
+    build: .
+    container_name: finance_tracker
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistência: Mapeia o arquivo do banco para fora do container
+      - ./data:/code/data
+    environment:
+      - DIA_FECHAMENTO_FATURA=25
+      - API_TOKEN=${API_TOKEN}
