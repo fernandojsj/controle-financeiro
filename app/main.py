@@ -82,6 +82,7 @@ async def logout():
 class WebhookPayload(BaseModel):
     raw_text: str
     app_name: str
+    user_email: str
     timestamp: str | None = None
 
 async def verify_token(x_token: str = Header(None)):
@@ -99,18 +100,24 @@ async def receber_gasto(payload: WebhookPayload, session: Session = Depends(get_
     
     if "Procurando novas mensagens" in payload.raw_text:
         return {"status": "ignored"}
+    
+    # Busca usuário pelo email
+    usuario = session.exec(select(Usuario).where(Usuario.email == payload.user_email)).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
     dados = processar_texto_notificacao(payload.raw_text)
     print(f"Dados processados: {dados}")
     
     novo_gasto = Gasto(
+        usuario_id=usuario.id,
         valor=dados["valor"],
         estabelecimento=dados["estabelecimento"],
         categoria=dados["categoria"],
         banco=payload.app_name,
         raw_text=payload.raw_text,
         data_compra=datetime.now(),
-        mes_referencia=calcular_mes_referencia(session)
+        mes_referencia=calcular_mes_referencia(session, usuario.id)
     )
     
     session.add(novo_gasto)
@@ -119,7 +126,15 @@ async def receber_gasto(payload: WebhookPayload, session: Session = Depends(get_
     return {"status": "ok"}
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, mes: str = Query(None), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+async def dashboard(request: Request, mes: str = Query(None), session_token: str = Cookie(None), session: Session = Depends(get_session)):
+    # Redireciona para login se não autenticado
+    if not session_token:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    usuario = session.exec(select(Usuario).where(Usuario.email == session_token)).first()
+    if not usuario:
+        return RedirectResponse(url="/login", status_code=303)
+    
     mes_ref_atual = mes or calcular_mes_referencia(session, usuario.id)
     dia_fechamento = get_dia_fechamento(session, usuario.id)
     meta_mensal = get_meta_mensal(session, usuario.id)
