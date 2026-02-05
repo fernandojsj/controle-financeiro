@@ -239,7 +239,8 @@ async def dashboard(request: Request, mes: str = Query(None), lang: str = Cookie
         "top5_gastos": top5_gastos,
         "meses_disponiveis": meses_disponiveis,
         "lang": current_lang,
-        "t": translations
+        "t": translations,
+        "usuario": usuario
     })
 
 @app.post("/adicionar-gasto")
@@ -339,3 +340,19 @@ async def exportar_csv(mes: str = Query(None), session: Session = Depends(get_se
     
     output.seek(0)
     return StreamingResponse(io.BytesIO(output.getvalue().encode("utf-8")), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=gastos_{mes_ref}.csv"})
+
+@app.post("/trocar-senha")
+async def trocar_senha(senha_atual: str = Form(...), senha_nova: str = Form(...), senha_confirma: str = Form(...), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+    # Verifica senha atual
+    if not bcrypt.checkpw(senha_atual.encode(), usuario.senha_hash.encode()):
+        return RedirectResponse(url="/?erro=senha_incorreta", status_code=303)
+    
+    # Verifica se as senhas novas coincidem
+    if senha_nova != senha_confirma:
+        return RedirectResponse(url="/?erro=senhas_diferentes", status_code=303)
+    
+    # Atualiza senha
+    usuario.senha_hash = bcrypt.hashpw(senha_nova.encode(), bcrypt.gensalt()).decode()
+    session.commit()
+    
+    return RedirectResponse(url="/?sucesso=senha_alterada", status_code=303)

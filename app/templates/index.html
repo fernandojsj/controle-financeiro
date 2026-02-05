@@ -82,32 +82,6 @@
             to { opacity: 1; }
         }
         
-        /* Overlay para transição suave */
-        #transition-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--overlay-bg);
-            opacity: 0;
-            pointer-events: none;
-            z-index: 9999;
-            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        #transition-overlay.active {
-            opacity: 1;
-        }
-        
-        :root {
-            --overlay-bg: rgba(255, 255, 255, 0.95);
-        }
-        
-        .dark {
-            --overlay-bg: rgba(17, 24, 39, 0.95);
-        }
-        
         /* Custom scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
@@ -141,14 +115,11 @@
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 font-sans antialiased">
-    <!-- Overlay de transição -->
-    <div id="transition-overlay"></div>
-    
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
-        <div class="w-64 bg-white dark:bg-gray-800 shadow-2xl flex flex-col border-r border-gray-200 dark:border-gray-700" data-aos="fade-right">
+        <div id="sidebar" class="w-64 bg-white dark:bg-gray-800 shadow-2xl flex flex-col border-r border-gray-200 dark:border-gray-700 transition-transform duration-300 ease-in-out lg:translate-x-0 -translate-x-full fixed lg:relative z-40 h-full">
             <!-- Logo/Header -->
-            <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-600 to-indigo-600">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-600 to-purple-600">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
                         <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,7 +135,7 @@
             
             <!-- Navigation -->
             <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
-                <a href="/" class="flex items-center gap-3 px-4 py-3 text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl font-medium shadow-lg transform hover:scale-105 transition-all duration-200">
+                <a href="/" class="flex items-center gap-3 px-4 py-3 text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl font-medium shadow-lg transform hover:scale-105 transition-all duration-200">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                     </svg>
@@ -220,67 +191,67 @@
                 
                 <div class="flex gap-2">
                     <a href="#" onclick="changeLanguage('pt'); return false;" 
-                       class="flex-1 text-center px-3 py-2 text-sm {{ 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' if lang != 'en' else 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' }} rounded-lg font-medium transition">
+                       class="flex-1 text-center px-3 py-2 text-sm {{ 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' if lang != 'en' else 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' }} rounded-lg font-medium transition">
                         PT
                     </a>
                     <a href="#" onclick="changeLanguage('en'); return false;" 
-                       class="flex-1 text-center px-3 py-2 text-sm {{ 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' if lang == 'en' else 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' }} rounded-lg font-medium transition">
+                       class="flex-1 text-center px-3 py-2 text-sm {{ 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' if lang == 'en' else 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' }} rounded-lg font-medium transition">
                         EN
                     </a>
                 </div>
             </div>
-            
-            <!-- User Section -->
-            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="w-8 h-8 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center">
-                        <span class="text-white text-sm font-medium">U</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-800 dark:text-white truncate">{{ t.get('user', 'Usuário') }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.get('logged_in', 'Logado') }}</p>
-                    </div>
-                </div>
-                <a href="/logout" 
-                   class="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                    </svg>
-                    {{ t.get('logout', 'Sair') }}
-                </a>
-            </div>
         </div>
+        
+        <!-- Overlay para mobile -->
+        <div id="sidebarOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden" onclick="toggleSidebar()"></div>
         
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Top Bar -->
             <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4">
                 <div class="flex justify-between items-center">
-                    <div>
-                        <h2 class="text-2xl font-semibold text-gray-800 dark:text-white">{{ t.get('financial_dashboard', 'Dashboard Financeiro') }}</h2>
-                        <div class="flex items-center gap-4 mt-1">
-                            <p class="text-sm text-gray-500 dark:text-gray-400">{{ t.get('period', 'Período') }}:</p>
-                            <select onchange="window.location.href='/?mes='+this.value" 
-                                    class="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg px-3 py-1.5 font-medium cursor-pointer focus:ring-2 focus:ring-blue-500">
-                                {% for mes in meses_disponiveis %}
-                                <option value="{{ mes }}" {% if mes == mes_ref %}selected{% endif %}>
-                                    {{ mes.split('-')[1] }}/{{ mes.split('-')[0] }}
-                                </option>
-                                {% endfor %}
-                            </select>
+                    <div class="flex items-center gap-4">
+                        <!-- Botão toggle sidebar (apenas mobile) -->
+                        <button onclick="toggleSidebar()" class="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">
+                            <svg class="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                            </svg>
+                        </button>
+                        <div>
+                            <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 dark:text-white">{{ t.get('financial_dashboard', 'Dashboard Financeiro') }}</h2>
+                            <div class="flex items-center gap-2 sm:gap-4 mt-1">
+                                <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{{ t.get('period', 'Período') }}:</p>
+                                <select onchange="window.location.href='/?mes='+this.value" 
+                                        class="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-xs sm:text-sm rounded-lg px-2 sm:px-3 py-1.5 font-medium cursor-pointer focus:ring-2 focus:ring-indigo-500">
+                                    {% for mes in meses_disponiveis %}
+                                    <option value="{{ mes }}" {% if mes == mes_ref %}selected{% endif %}>
+                                        {{ mes.split('-')[1] }}/{{ mes.split('-')[0] }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
                         </div>
                     </div>
                     <div class="flex items-center gap-4">
-                        <div class="text-right">
+                        <div class="text-right hidden sm:block">
                             <p class="text-sm text-gray-500 dark:text-gray-400">{{ t.get('month_total', 'Total do Mês') }}</p>
                             <p class="text-xl font-bold text-gray-800 dark:text-white">R$ {{ total_mes | moeda }}</p>
+                        </div>
+                        <!-- User menu -->
+                        <div class="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-700">
+                            <div class="flex flex-col items-center gap-1">
+                                <button onclick="document.getElementById('modalPerfil').classList.remove('hidden')" class="w-10 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full flex items-center justify-center hover:shadow-lg transition">
+                                    <span class="text-white text-sm font-medium">{{ usuario.nome[0].upper() }}</span>
+                                </button>
+                                <p class="text-xs font-medium text-gray-800 dark:text-white hidden md:block">{{ usuario.nome }}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </header>
 
             <!-- Main Content Area -->
-            <main class="flex-1 overflow-auto p-6 space-y-6 bg-gray-100 dark:bg-gray-900">
+            <main class="flex-1 overflow-auto p-3 sm:p-6 space-y-4 sm:space-y-6 bg-gray-100 dark:bg-gray-900">
             
             <!-- Alerta para mês anterior -->
             {% if mes_ref != mes_atual %}
@@ -298,20 +269,20 @@
             {% endif %}
             
             <!-- Cards Principais -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="glass rounded-2xl shadow-xl p-6 border-l-4 border-blue-500 hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300" data-aos="fade-up" data-aos-delay="0">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t.get('total_month', 'Total do Mês') }}</h3>
-                        <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+                <div class="glass rounded-xl sm:rounded-2xl shadow-xl p-3 sm:p-6 hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300">
+                    <div class="flex items-center justify-between mb-2 sm:mb-3">
+                        <h3 class="text-[10px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t.get('total_month', 'Total do Mês') }}</h3>
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg sm:rounded-xl flex items-center justify-center">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                         </div>
                     </div>
-                    <p class="text-3xl font-extrabold text-gray-900 dark:text-white mb-3 tracking-tight">R$ {{ total_mes | moeda }}</p>
+                    <p class="text-xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mb-2 sm:mb-3 tracking-tight">R$ {{ total_mes | moeda }}</p>
                     {% if meta_mensal > 0 %}
                     <div class="space-y-2">
-                        <div class="flex justify-between text-xs text-gray-600 dark:text-gray-400 font-medium">
+                        <div class="flex justify-between text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 font-medium">
                             <span>{{ t.get('goal', 'Meta') }}: R$ {{ meta_mensal | moeda }}</span>
                             <span class="font-bold">{{ (total_mes/meta_mensal*100)|round|int }}%</span>
                         </div>
@@ -366,12 +337,12 @@
             </div>
 
             <!-- Gráficos -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 
                 <!-- Gráfico Evolução -->
-                <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t.get('expense_evolution', 'Evolução dos Gastos') }}</h2>
+                <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+                        <h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">{{ t.get('expense_evolution', 'Evolução dos Gastos') }}</h2>
                         <select id="periodoFiltro" onchange="filtrarPeriodo(this.value)" 
                                 class="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-xs rounded-lg px-3 py-1.5 font-medium cursor-pointer focus:ring-2 focus:ring-blue-500">
                             <option value="1">{{ t.get('1_month', '1 Mês') }}</option>
@@ -380,26 +351,26 @@
                             <option value="12" selected>{{ t.get('12_months', '12 Meses') }}</option>
                         </select>
                     </div>
-                    <div class="h-72">
+                    <div class="h-48 sm:h-72">
                         <canvas id="evolucaoChart"></canvas>
                     </div>
                 </div>
 
                 <!-- Gráfico Pizza -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ t.get('distribution_by_category', 'Distribuição por Categoria') }}</h2>
-                    <div class="h-72">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-6">
+                    <h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ t.get('distribution_by_category', 'Distribuição por Categoria') }}</h2>
+                    <div class="h-48 sm:h-72">
                         <canvas id="gastosChart"></canvas>
                     </div>
                 </div>
             </div>
 
             <!-- Top 5 e Resumo -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 
                 <!-- Top 5 Maiores Gastos -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ t.get('top_expenses', 'Maiores Gastos do Mês') }}</h2>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-6">
+                    <h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ t.get('top_expenses', 'Maiores Gastos do Mês') }}</h2>
                     <div class="space-y-3">
                         {% for gasto in top5_gastos %}
                         <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
@@ -416,8 +387,8 @@
                 </div>
 
                 <!-- Resumo por Categoria -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ t.get('category_summary', 'Resumo por Categoria') }}</h2>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-6">
+                    <h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ t.get('category_summary', 'Resumo por Categoria') }}</h2>
                     <div class="space-y-3">
                         {% for categoria, dados in categorias[:5] %}
                         <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
@@ -437,11 +408,11 @@
 
             <!-- Extrato -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap justify-between items-center gap-3">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t.get('full_statement', 'Extrato Completo') }}</h2>
-                    <div class="relative">
+                <div class="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">{{ t.get('full_statement', 'Extrato Completo') }}</h2>
+                    <div class="relative w-full sm:w-auto">
                         <input type="text" id="searchInput" placeholder="{{ t.get('search_transaction', 'Buscar transação...') }}" 
-                               class="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64">
+                               class="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64">
                         <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
@@ -497,15 +468,22 @@
 
     <!-- Modal Add Gasto -->
     <div id="modalAddGasto" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-md">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Adicionar Gasto Manual</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white dark:bg-gray-800 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Adicionar Gasto</h3>
+                    <button onclick="document.getElementById('modalAddGasto').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
-            <form method="POST" action="/adicionar-gasto" class="p-6 space-y-4">
+            <form method="POST" action="/adicionar-gasto" class="p-4 sm:p-6 space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Data do Gasto</label>
                     <input type="date" name="data_gasto" required 
-                           class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                           class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 sm:px-4 py-2.5 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Valor (R$)</label>
@@ -532,12 +510,12 @@
                     <input type="text" name="banco" required placeholder="Ex: Nubank"
                            class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
-                <div class="flex gap-3 mt-6">
+                <div class="flex flex-col sm:flex-row gap-3 pt-2">
                     <button type="button" onclick="document.getElementById('modalAddGasto').classList.add('hidden')" 
-                            class="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-lg font-medium transition">
+                            class="w-full sm:flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-lg font-medium transition text-sm sm:text-base">
                         Cancelar
                     </button>
-                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition">
+                    <button type="submit" class="w-full sm:flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-4 py-2.5 rounded-lg font-medium transition text-sm sm:text-base">
                         Adicionar
                     </button>
                 </div>
@@ -546,12 +524,19 @@
     </div>
 
     <!-- Modal Orçamento -->
-    <div id="modalOrcamento" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-2xl">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Configurar Orçamento</h3>
+    <div id="modalOrcamento" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl my-8">
+            <div class="sticky top-0 bg-white dark:bg-gray-800 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 rounded-t-xl">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Configurar Orçamento</h3>
+                    <button onclick="document.getElementById('modalOrcamento').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
-            <form method="POST" action="/configurar-meta" class="p-6 space-y-6">
+            <form method="POST" action="/configurar-meta" class="p-4 sm:p-6 space-y-4 sm:space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Renda Mensal (R$)</label>
@@ -569,61 +554,61 @@
                 </div>
                 
                 <!-- Regra 50-30-20 -->
-                <div id="regra5030" class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600 rounded-xl p-6 border border-blue-200 dark:border-gray-600">
-                    <div class="flex justify-between items-center mb-4">
+                <div id="regra5030" class="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4">
                         <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                            <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-sm">
                                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                                 </svg>
                             </div>
-                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white">Sugestão de Orçamento</h4>
+                            <h4 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Sugestão de Orçamento</h4>
                         </div>
-                        <div class="flex gap-2">
-                            <button type="button" onclick="toggleModo('padrao')" id="btnPadrao" class="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm transition">
-                                Padrão 50-30-20
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <button type="button" onclick="toggleModo('padrao')" id="btnPadrao" class="flex-1 sm:flex-none px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-xs sm:text-sm font-medium transition shadow-sm hover:shadow-md">
+                                50-30-20
                             </button>
-                            <button type="button" onclick="toggleModo('customizado')" id="btnCustomizado" class="px-3 py-1.5 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm transition">
-                                Customizado
+                            <button type="button" onclick="toggleModo('customizado')" id="btnCustomizado" class="flex-1 sm:flex-none px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs sm:text-sm font-medium transition hover:bg-gray-200 dark:hover:bg-gray-600">
+                                Custom
                             </button>
                         </div>
                     </div>
                     
                     <!-- Modo Padrão -->
                     <div id="modoPadrao">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+                            <div class="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-lg p-3 sm:p-4 border border-emerald-200 dark:border-emerald-800">
                                 <div class="flex items-center gap-2 mb-2">
-                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                                    <h5 class="font-semibold text-gray-800 dark:text-white">50% - Essenciais</h5>
+                                    <div class="w-3 h-3 bg-emerald-500 rounded-full shadow-sm"></div>
+                                    <h5 class="text-xs sm:text-sm font-semibold text-emerald-900 dark:text-emerald-100">50% Essenciais</h5>
                                 </div>
-                                <p class="text-2xl font-bold text-green-600 dark:text-green-400" id="essenciais">R$ {{ (salario * 0.5) | moeda if salario > 0 else '0,00' }}</p>
-                                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Moradia, alimentação, transporte, contas básicas</p>
+                                <p class="text-xl sm:text-2xl font-bold text-emerald-700 dark:text-emerald-400" id="essenciais">R$ {{ (salario * 0.5) | moeda if salario > 0 else '0,00' }}</p>
+                                <p class="text-[10px] sm:text-xs text-emerald-600 dark:text-emerald-500 mt-1">Moradia, alimentação, contas</p>
                             </div>
-                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-orange-200 dark:border-orange-700">
+                            <div class="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-lg p-3 sm:p-4 border border-amber-200 dark:border-amber-800">
                                 <div class="flex items-center gap-2 mb-2">
-                                    <div class="w-3 h-3 bg-orange-500 rounded-full"></div>
-                                    <h5 class="font-semibold text-gray-800 dark:text-white">30% - Desejos</h5>
+                                    <div class="w-3 h-3 bg-amber-500 rounded-full shadow-sm"></div>
+                                    <h5 class="text-xs sm:text-sm font-semibold text-amber-900 dark:text-amber-100">30% Desejos</h5>
                                 </div>
-                                <p class="text-2xl font-bold text-orange-600 dark:text-orange-400" id="desejos">R$ {{ (salario * 0.3) | moeda if salario > 0 else '0,00' }}</p>
-                                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Lazer, restaurantes, compras não essenciais</p>
+                                <p class="text-xl sm:text-2xl font-bold text-amber-700 dark:text-amber-400" id="desejos">R$ {{ (salario * 0.3) | moeda if salario > 0 else '0,00' }}</p>
+                                <p class="text-[10px] sm:text-xs text-amber-600 dark:text-amber-500 mt-1">Lazer, restaurantes</p>
                             </div>
-                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+                            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-3 sm:p-4 border border-blue-200 dark:border-blue-800">
                                 <div class="flex items-center gap-2 mb-2">
-                                    <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
-                                    <h5 class="font-semibold text-gray-800 dark:text-white">20% - Poupança</h5>
+                                    <div class="w-3 h-3 bg-blue-500 rounded-full shadow-sm"></div>
+                                    <h5 class="text-xs sm:text-sm font-semibold text-blue-900 dark:text-blue-100">20% Poupança</h5>
                                 </div>
-                                <p class="text-2xl font-bold text-blue-600 dark:text-blue-400" id="poupanca">R$ {{ (salario * 0.2) | moeda if salario > 0 else '0,00' }}</p>
-                                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Investimentos, reserva de emergência</p>
+                                <p class="text-xl sm:text-2xl font-bold text-blue-700 dark:text-blue-400" id="poupanca">R$ {{ (salario * 0.2) | moeda if salario > 0 else '0,00' }}</p>
+                                <p class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-500 mt-1">Investimentos, reserva</p>
                             </div>
                         </div>
-                        <div class="flex gap-2">
+                        <div class="flex flex-col sm:flex-row gap-2">
                             <button type="button" onclick="aplicarSugestao('essenciais')" 
-                                    class="px-3 py-1.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-800 transition">
+                                    class="w-full sm:flex-1 px-3 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs sm:text-sm font-medium hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition border border-emerald-200 dark:border-emerald-800">
                                 Usar 50% como limite
                             </button>
                             <button type="button" onclick="aplicarSugestao('gastos')" 
-                                    class="px-3 py-1.5 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 rounded-lg text-sm hover:bg-orange-200 dark:hover:bg-orange-800 transition">
+                                    class="w-full sm:flex-1 px-3 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-lg text-xs sm:text-sm font-medium hover:bg-amber-200 dark:hover:bg-amber-900/50 transition border border-amber-200 dark:border-amber-800">
                                 Usar 80% como limite
                             </button>
                         </div>
@@ -631,69 +616,67 @@
                     
                     <!-- Modo Customizado -->
                     <div id="modoCustomizado" class="hidden">
-                        <div class="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 mb-4">
-                            <h5 class="font-semibold text-yellow-800 dark:text-yellow-300 mb-2">Para quem mora com família ou tem poucos gastos essenciais</h5>
-                            <p class="text-sm text-yellow-700 dark:text-yellow-400">Recomendação: 20-30% gastos, 70-80% investimentos/poupança</p>
+                        <div class="bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 sm:p-4 mb-4">
+                            <h5 class="text-xs sm:text-sm font-semibold text-yellow-900 dark:text-yellow-200 mb-1">Para quem mora com família</h5>
+                            <p class="text-[10px] sm:text-xs text-yellow-800 dark:text-yellow-300">Recomendação: 20-30% gastos, 70-80% investimentos</p>
                         </div>
                         
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+                            <div class="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-lg p-3 sm:p-4 border border-emerald-200 dark:border-emerald-800">
                                 <div class="flex items-center gap-2 mb-2">
-                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                                    <h5 class="font-semibold text-gray-800 dark:text-white">Gastos Pessoais</h5>
+                                    <div class="w-3 h-3 bg-emerald-500 rounded-full shadow-sm"></div>
+                                    <h5 class="text-xs sm:text-sm font-semibold text-emerald-900 dark:text-emerald-100">Gastos</h5>
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <input type="range" id="percGastos" min="10" max="60" value="25" 
-                                           class="flex-1" oninput="atualizarCustomizado()">
-                                    <span id="percGastosLabel" class="text-sm font-medium text-gray-900 dark:text-white w-12">25%</span>
+                                           class="flex-1 h-2 accent-emerald-500" oninput="atualizarCustomizado()">
+                                    <span id="percGastosLabel" class="text-xs sm:text-sm font-medium text-emerald-900 dark:text-emerald-100 w-10">25%</span>
                                 </div>
-                                <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-2" id="valorGastos">R$ 0,00</p>
-                                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Alimentação, transporte, lazer</p>
+                                <p class="text-xl sm:text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-2" id="valorGastos">R$ 0,00</p>
                             </div>
                             
-                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+                            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-3 sm:p-4 border border-blue-200 dark:border-blue-800">
                                 <div class="flex items-center gap-2 mb-2">
-                                    <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
-                                    <h5 class="font-semibold text-gray-800 dark:text-white">Investimentos</h5>
+                                    <div class="w-3 h-3 bg-blue-500 rounded-full shadow-sm"></div>
+                                    <h5 class="text-xs sm:text-sm font-semibold text-blue-900 dark:text-blue-100">Investir</h5>
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <input type="range" id="percInvest" min="30" max="80" value="60" 
-                                           class="flex-1" oninput="atualizarCustomizado()">
-                                    <span id="percInvestLabel" class="text-sm font-medium text-gray-900 dark:text-white w-12">60%</span>
+                                           class="flex-1 h-2 accent-blue-500" oninput="atualizarCustomizado()">
+                                    <span id="percInvestLabel" class="text-xs sm:text-sm font-medium text-blue-900 dark:text-blue-100 w-10">60%</span>
                                 </div>
-                                <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-2" id="valorInvest">R$ 0,00</p>
-                                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Poupança, reserva, ações</p>
+                                <p class="text-xl sm:text-2xl font-bold text-blue-700 dark:text-blue-400 mt-2" id="valorInvest">R$ 0,00</p>
                             </div>
                             
-                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+                            <div class="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-lg p-3 sm:p-4 border border-purple-200 dark:border-purple-800">
                                 <div class="flex items-center gap-2 mb-2">
-                                    <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
-                                    <h5 class="font-semibold text-gray-800 dark:text-white">Reserva</h5>
+                                    <div class="w-3 h-3 bg-purple-500 rounded-full shadow-sm"></div>
+                                    <h5 class="text-xs sm:text-sm font-semibold text-purple-900 dark:text-purple-100">Reserva</h5>
                                 </div>
-                                <p class="text-2xl font-bold text-purple-600 dark:text-purple-400" id="valorReserva">R$ 0,00</p>
-                                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Sobra automática</p>
+                                <p class="text-xl sm:text-2xl font-bold text-purple-700 dark:text-purple-400 mt-2" id="valorReserva">R$ 0,00</p>
+                                <p class="text-[10px] sm:text-xs text-purple-600 dark:text-purple-500 mt-1">Sobra automática</p>
                             </div>
                         </div>
                         
-                        <div class="flex gap-2">
+                        <div class="flex flex-col sm:flex-row gap-2">
                             <button type="button" onclick="aplicarCustomizado('gastos')" 
-                                    class="px-3 py-1.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-800 transition">
-                                Usar % gastos como limite
+                                    class="w-full sm:flex-1 px-3 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs sm:text-sm font-medium hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition border border-emerald-200 dark:border-emerald-800">
+                                Usar % gastos
                             </button>
                             <button type="button" onclick="aplicarCustomizado('total')" 
-                                    class="px-3 py-1.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg text-sm hover:bg-blue-200 dark:hover:bg-blue-800 transition">
-                                Usar gastos + investimentos
+                                    class="w-full sm:flex-1 px-3 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition border border-blue-200 dark:border-blue-800">
+                                Usar gastos + investir
                             </button>
                         </div>
                     </div>
                 </div>
                 
-                <div class="flex gap-3 mt-6">
+                <div class="flex flex-col sm:flex-row gap-3">
                     <button type="button" onclick="document.getElementById('modalOrcamento').classList.add('hidden')" 
-                            class="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-lg font-medium transition">
+                            class="w-full sm:flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-lg font-medium transition text-sm sm:text-base">
                         Cancelar
                     </button>
-                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition">
+                    <button type="submit" class="w-full sm:flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-4 py-2.5 rounded-lg font-medium transition text-sm sm:text-base">
                         Salvar
                     </button>
                 </div>
@@ -703,21 +686,28 @@
 
     <!-- Modal Ciclo -->
     <div id="modalCiclo" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-md">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Configurar Ciclo de Fatura</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md">
+            <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Ciclo de Fatura</h3>
+                    <button onclick="document.getElementById('modalCiclo').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
-            <form method="POST" action="/configurar-fatura" class="p-6">
+            <form method="POST" action="/configurar-fatura" class="p-4 sm:p-6">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dia de Fechamento</label>
                 <input type="number" name="dia" min="1" max="31" value="{{ dia_fechamento }}" 
                        class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Define quando o mês de referência muda</p>
-                <div class="flex gap-3 mt-6">
+                <div class="flex flex-col sm:flex-row gap-3 mt-6">
                     <button type="button" onclick="document.getElementById('modalCiclo').classList.add('hidden')" 
-                            class="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-lg font-medium transition">
+                            class="w-full sm:flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-lg font-medium transition text-sm sm:text-base">
                         Cancelar
                     </button>
-                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition">
+                    <button type="submit" class="w-full sm:flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-4 py-2.5 rounded-lg font-medium transition text-sm sm:text-base">
                         Salvar
                     </button>
                 </div>
@@ -727,11 +717,18 @@
 
     <!-- Modal Editar Gasto -->
     <div id="modalEditarGasto" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-md">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Editar Gasto</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white dark:bg-gray-800 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Editar Gasto</h3>
+                    <button onclick="document.getElementById('modalEditarGasto').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
-            <form method="POST" action="/editar-gasto" class="p-6 space-y-4">
+            <form method="POST" action="/editar-gasto" class="p-4 sm:p-6 space-y-4">
                 <input type="hidden" name="gasto_id" id="editGastoId">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Data do Gasto</label>
@@ -758,13 +755,89 @@
                         <option value="Outros">Outros</option>
                     </select>
                 </div>
-                <div class="flex gap-3 mt-6">
+                <div class="flex flex-col sm:flex-row gap-3 pt-2">
                     <button type="button" onclick="document.getElementById('modalEditarGasto').classList.add('hidden')" 
-                            class="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-lg font-medium transition">
+                            class="w-full sm:flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-lg font-medium transition text-sm sm:text-base">
                         Cancelar
                     </button>
-                    <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg font-medium transition">
-                        Salvar Alterações
+                    <button type="submit" class="w-full sm:flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-4 py-2.5 rounded-lg font-medium transition text-sm sm:text-base">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Perfil -->
+    <div id="modalPerfil" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md">
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-8 rounded-t-xl">
+                <div class="flex flex-col items-center">
+                    <div class="w-20 h-20 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mb-3">
+                        <span class="text-white text-3xl font-bold">{{ usuario.nome[0].upper() }}</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-white">{{ usuario.nome }}</h3>
+                    <p class="text-sm text-indigo-100">{{ usuario.email }}</p>
+                </div>
+            </div>
+            <div class="p-6 space-y-3">
+                <button onclick="document.getElementById('modalPerfil').classList.add('hidden'); document.getElementById('modalTrocarSenha').classList.remove('hidden');" 
+                        class="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition">
+                    <svg class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                    </svg>
+                    <span class="text-gray-900 dark:text-white font-medium">Trocar Senha</span>
+                </button>
+                <a href="/logout" class="w-full flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition">
+                    <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    <span class="text-red-600 dark:text-red-400 font-medium">Sair da Conta</span>
+                </a>
+                <button onclick="document.getElementById('modalPerfil').classList.add('hidden')" 
+                        class="w-full px-4 py-2.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium transition">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Trocar Senha -->
+    <div id="modalTrocarSenha" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Trocar Senha</h3>
+                    <button onclick="document.getElementById('modalTrocarSenha').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form method="POST" action="/trocar-senha" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Senha Atual</label>
+                    <input type="password" name="senha_atual" required 
+                           class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nova Senha</label>
+                    <input type="password" name="senha_nova" required minlength="6"
+                           class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Confirmar Nova Senha</label>
+                    <input type="password" name="senha_confirma" required minlength="6"
+                           class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                    <button type="button" onclick="document.getElementById('modalTrocarSenha').classList.add('hidden')" 
+                            class="w-full sm:flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-lg font-medium transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="w-full sm:flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-4 py-2.5 rounded-lg font-medium transition">
+                        Alterar Senha
                     </button>
                 </div>
             </form>
@@ -781,37 +854,32 @@
             });
         }
         
+        // Função para toggle sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+        
         // Função para alternar tema
         function toggleTheme() {
-            const overlay = document.getElementById('transition-overlay');
             const html = document.documentElement;
             const isDark = html.classList.contains('dark');
             const newTheme = isDark ? 'light' : 'dark';
             
-            // Ativa overlay
-            overlay.classList.add('active');
-            
-            // Aguarda animação e recarrega
-            setTimeout(() => {
-                html.classList.toggle('dark', newTheme === 'dark');
-                html.setAttribute('data-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-                location.reload();
-            }, 400);
+            html.classList.toggle('dark');
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeButton(newTheme);
+            location.reload();
         }
         
         // Função para trocar idioma preservando mês
         function changeLanguage(lang) {
-            const overlay = document.getElementById('transition-overlay');
             const urlParams = new URLSearchParams(window.location.search);
             const mes = urlParams.get('mes');
-            const url = `/set-language/${lang}${mes ? '?mes=' + mes : ''}`;
-            
-            // Ativa overlay
-            overlay.classList.add('active');
-            
-            // Aguarda animação e navega
-            setTimeout(() => window.location.href = url, 400);
+            window.location.href = `/set-language/${lang}${mes ? '?mes=' + mes : ''}`;
         }
         
         function updateThemeButton(theme) {
@@ -881,13 +949,13 @@
             const modoCustomizado = document.getElementById('modoCustomizado');
             
             if (modo === 'padrao') {
-                btnPadrao.className = 'px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm transition';
-                btnCustomizado.className = 'px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm transition';
+                btnPadrao.className = 'flex-1 sm:flex-none px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-xs sm:text-sm font-medium transition shadow-sm hover:shadow-md';
+                btnCustomizado.className = 'flex-1 sm:flex-none px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs sm:text-sm font-medium transition hover:bg-gray-200 dark:hover:bg-gray-600';
                 modoPadrao.classList.remove('hidden');
                 modoCustomizado.classList.add('hidden');
             } else {
-                btnPadrao.className = 'px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm transition';
-                btnCustomizado.className = 'px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm transition';
+                btnPadrao.className = 'flex-1 sm:flex-none px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs sm:text-sm font-medium transition hover:bg-gray-200 dark:hover:bg-gray-600';
+                btnCustomizado.className = 'flex-1 sm:flex-none px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-xs sm:text-sm font-medium transition shadow-sm hover:shadow-md';
                 modoPadrao.classList.add('hidden');
                 modoCustomizado.classList.remove('hidden');
                 atualizarCustomizado();
