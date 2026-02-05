@@ -1,22 +1,69 @@
 import re
 from datetime import datetime
+from sqlmodel import Session, select
 
-DIA_FECHAMENTO_FATURA = 25 
+DIA_FECHAMENTO_FATURA = 25
 
-def calcular_mes_referencia(data_compra: datetime = None) -> str:
+def get_dia_fechamento(session: Session) -> int:
+    from .models import Configuracao
+    config = session.exec(select(Configuracao).where(Configuracao.chave == "dia_fechamento")).first()
+    return int(config.valor) if config else DIA_FECHAMENTO_FATURA
+
+def set_dia_fechamento(session: Session, dia: int):
+    from .models import Configuracao
+    config = session.exec(select(Configuracao).where(Configuracao.chave == "dia_fechamento")).first()
+    if config:
+        config.valor = str(dia)
+    else:
+        config = Configuracao(chave="dia_fechamento", valor=str(dia))
+        session.add(config)
+    session.commit()
+
+def calcular_mes_referencia(session: Session, data_compra: datetime = None) -> str:
     if not data_compra:
         data_compra = datetime.now()
     
+    dia_fechamento = get_dia_fechamento(session)
     ano = data_compra.year
     mes = data_compra.month
     
-    if data_compra.day >= DIA_FECHAMENTO_FATURA:
+    if data_compra.day >= dia_fechamento:
         mes += 1
         if mes > 12:
             mes = 1
             ano += 1
             
     return f"{ano}-{mes:02d}"
+
+def get_meta_mensal(session: Session) -> float:
+    from .models import Configuracao
+    config = session.exec(select(Configuracao).where(Configuracao.chave == "meta_mensal")).first()
+    return float(config.valor) if config else 0.0
+
+def set_meta_mensal(session: Session, meta: float):
+    from .models import Configuracao
+    config = session.exec(select(Configuracao).where(Configuracao.chave == "meta_mensal")).first()
+    if config:
+        config.valor = str(meta)
+    else:
+        config = Configuracao(chave="meta_mensal", valor=str(meta))
+        session.add(config)
+    session.commit()
+
+def get_salario(session: Session) -> float:
+    from .models import Configuracao
+    config = session.exec(select(Configuracao).where(Configuracao.chave == "salario")).first()
+    return float(config.valor) if config else 0.0
+
+def set_salario(session: Session, salario: float):
+    from .models import Configuracao
+    config = session.exec(select(Configuracao).where(Configuracao.chave == "salario")).first()
+    if config:
+        config.valor = str(salario)
+    else:
+        config = Configuracao(chave="salario", valor=str(salario))
+        session.add(config)
+    session.commit()
 
 def categorizar_gasto(estabelecimento: str) -> str:
     est = estabelecimento.lower()
