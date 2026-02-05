@@ -1,6 +1,7 @@
 fastapi
-uvicorn
+uvicorn[standard]
 sqlmodel
 jinja2
 python-multipart
 python-dotenv
+bcrypt==4.1.2

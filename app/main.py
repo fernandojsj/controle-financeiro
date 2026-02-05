@@ -2,8 +2,9 @@ import json
 import os
 import csv
 import io
+import bcrypt
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, Depends, Header, HTTPException, status, Form, Query
+from fastapi import FastAPI, Request, Depends, Header, HTTPException, status, Form, Query, Cookie
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,7 +17,7 @@ import statistics
 load_dotenv()
 
 from .database import create_db_and_tables, get_session
-from .models import Gasto, Configuracao
+from .models import Gasto, Configuracao, Usuario
 from .services import processar_texto_notificacao, calcular_mes_referencia, get_dia_fechamento, set_dia_fechamento, get_meta_mensal, set_meta_mensal, get_salario, set_salario
 
 app = FastAPI(title="Finance Tracker")
@@ -29,17 +30,64 @@ def formatar_moeda(valor):
 # Registra a função no Jinja2 para usar no HTML
 templates.env.filters["moeda"] = formatar_moeda
 
-# --- Segurança ---
-API_TOKEN = os.getenv("API_TOKEN", "token-padrao-dev")
+# Autenticação
+async def get_current_user(session_token: str = Cookie(None), session: Session = Depends(get_session)):
+    if not session_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Não autenticado")
+    
+    # Busca usuário pelo email armazenado no cookie (simplificado)
+    usuario = session.exec(select(Usuario).where(Usuario.email == session_token)).first()
+    if not usuario:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário inválido")
+    return usuario
 
-async def verify_token(x_api_token: str = Header(...)):
-    if x_api_token != API_TOKEN:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, error: str = Query(None)):
+    return templates.TemplateResponse("login.html", {"request": request, "error": error})
+
+@app.post("/login")
+async def login(email: str = Form(...), senha: str = Form(...), session: Session = Depends(get_session)):
+    usuario = session.exec(select(Usuario).where(Usuario.email == email)).first()
+    if not usuario or not bcrypt.checkpw(senha.encode(), usuario.senha_hash.encode()):
+        return RedirectResponse(url="/login?error=Email ou senha inválidos", status_code=303)
+    
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie(key="session_token", value=email, httponly=True, max_age=86400*30)
+    return response
+
+@app.get("/registro", response_class=HTMLResponse)
+async def registro_page(request: Request, error: str = Query(None)):
+    return templates.TemplateResponse("registro.html", {"request": request, "error": error})
+
+@app.post("/registro")
+async def registro(nome: str = Form(...), email: str = Form(...), senha: str = Form(...), session: Session = Depends(get_session)):
+    if session.exec(select(Usuario).where(Usuario.email == email)).first():
+        return RedirectResponse(url="/registro?error=Email já cadastrado", status_code=303)
+    
+    senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
+    novo_usuario = Usuario(email=email, senha_hash=senha_hash, nome=nome)
+    session.add(novo_usuario)
+    session.commit()
+    
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie(key="session_token", value=email, httponly=True, max_age=86400*30)
+    return response
+
+@app.get("/logout")
+async def logout():
+    response = RedirectResponse(url="/login", status_code=303)
+    response.delete_cookie("session_token")
+    return response
 
 class WebhookPayload(BaseModel):
     raw_text: str
     app_name: str
     timestamp: str | None = None
+
+async def verify_token(x_token: str = Header(None)):
+    expected_token = os.getenv("WEBHOOK_TOKEN", "")
+    if not expected_token or x_token != expected_token:
+        raise HTTPException(status_code=403, detail="Token inválido")
 
 @app.on_event("startup")
 def on_startup():
@@ -71,19 +119,19 @@ async def receber_gasto(payload: WebhookPayload, session: Session = Depends(get_
     return {"status": "ok"}
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, mes: str = Query(None), session: Session = Depends(get_session)):
-    mes_ref_atual = mes or calcular_mes_referencia(session)
-    dia_fechamento = get_dia_fechamento(session)
-    meta_mensal = get_meta_mensal(session)
-    salario = get_salario(session)
+async def dashboard(request: Request, mes: str = Query(None), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+    mes_ref_atual = mes or calcular_mes_referencia(session, usuario.id)
+    dia_fechamento = get_dia_fechamento(session, usuario.id)
+    meta_mensal = get_meta_mensal(session, usuario.id)
+    salario = get_salario(session, usuario.id)
     
     # Gastos do mês selecionado
-    statement = select(Gasto).where(Gasto.mes_referencia == mes_ref_atual).order_by(Gasto.data_compra.desc())
+    statement = select(Gasto).where(Gasto.mes_referencia == mes_ref_atual, Gasto.usuario_id == usuario.id).order_by(Gasto.data_compra.desc())
     gastos = session.exec(statement).all()
     total_mes = sum([g.valor for g in gastos])
     
     # Mês anterior para comparação
-    todos_gastos = session.exec(select(Gasto)).all()
+    todos_gastos = session.exec(select(Gasto).where(Gasto.usuario_id == usuario.id)).all()
     gastos_por_mes = defaultdict(float)
     for g in todos_gastos:
         gastos_por_mes[g.mes_referencia] += g.valor
@@ -139,21 +187,21 @@ async def dashboard(request: Request, mes: str = Query(None), session: Session =
     })
 
 @app.post("/configurar-fatura")
-async def configurar_fatura(dia: int = Form(...), session: Session = Depends(get_session)):
-    set_dia_fechamento(session, dia)
+async def configurar_fatura(dia: int = Form(...), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+    set_dia_fechamento(session, dia, usuario.id)
     return RedirectResponse(url="/", status_code=303)
 
 @app.post("/configurar-meta")
-async def configurar_meta(meta: float = Form(...), salario: float = Form(0), session: Session = Depends(get_session)):
-    set_meta_mensal(session, meta)
+async def configurar_meta(meta: float = Form(...), salario: float = Form(0), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+    set_meta_mensal(session, meta, usuario.id)
     if salario > 0:
-        set_salario(session, salario)
+        set_salario(session, salario, usuario.id)
     return RedirectResponse(url="/", status_code=303)
 
 @app.get("/exportar")
-async def exportar_csv(mes: str = Query(None), session: Session = Depends(get_session)):
-    mes_ref = mes or calcular_mes_referencia(session)
-    statement = select(Gasto).where(Gasto.mes_referencia == mes_ref).order_by(Gasto.data_compra.desc())
+async def exportar_csv(mes: str = Query(None), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+    mes_ref = mes or calcular_mes_referencia(session, usuario.id)
+    statement = select(Gasto).where(Gasto.mes_referencia == mes_ref, Gasto.usuario_id == usuario.id).order_by(Gasto.data_compra.desc())
     gastos = session.exec(statement).all()
     
     output = io.StringIO()
