@@ -17,12 +17,6 @@
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-4">
                         <h1 class="text-2xl font-semibold text-gray-900">Controle Financeiro</h1>
-                        <select onchange="window.location.href='/?mes='+this.value" 
-                                class="bg-gray-100 border border-gray-300 text-gray-700 text-sm rounded-lg px-3 py-1.5 font-medium cursor-pointer focus:ring-2 focus:ring-blue-500">
-                            {% for m in meses_disponiveis %}
-                            <option value="{{ m }}" {% if m == mes_ref %}selected{% endif %}>{{ m }}</option>
-                            {% endfor %}
-                        </select>
                     </div>
                     <div class="flex gap-2">
                         <a href="/exportar?mes={{ mes_ref }}" 
@@ -92,7 +86,16 @@
                 
                 <!-- Gráfico Evolução -->
                 <div class="lg:col-span-2 bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Evolução dos Gastos</h2>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-900">Evolução dos Gastos</h2>
+                        <select id="periodoFiltro" onchange="filtrarPeriodo(this.value)" 
+                                class="bg-gray-100 border border-gray-300 text-gray-700 text-xs rounded-lg px-3 py-1.5 font-medium cursor-pointer focus:ring-2 focus:ring-blue-500">
+                            <option value="1">1 Mês</option>
+                            <option value="3">3 Meses</option>
+                            <option value="6">6 Meses</option>
+                            <option value="12" selected>12 Meses</option>
+                        </select>
+                    </div>
                     <div class="h-72">
                         <canvas id="evolucaoChart"></canvas>
                     </div>
@@ -260,105 +263,133 @@
         const metaMensal = {{ meta_mensal if meta_mensal > 0 else 0 }};
         const salario = {{ salario if salario > 0 else 0 }};
         const previsao = {{ previsao }};
-        const gastosData = {{ evolucao_valores_json | safe }};
-        const maxGasto = gastosData.length > 0 ? Math.max(...gastosData) : 0;
+        let gastosData = {{ evolucao_valores_json | safe }};
+        let labels = {{ evolucao_labels_json | safe }};
         
-        // Define o topo do gráfico baseado no salário configurado
-        const yMax = salario > 0 ? salario : (Math.max(metaMensal, maxGasto, previsao) * 1.15 || 1000);
+        // Armazena dados completos
+        const dadosCompletos = {
+            labels: [...labels],
+            gastos: [...gastosData]
+        };
         
-        const datasets = [{
-            label: 'Gastos',
-            data: gastosData,
-            backgroundColor: '#10B981',
-            borderRadius: 6,
-            barThickness: 40
-        }];
-        
-        // Linha vermelha de alerta da meta de gastos
-        if (metaMensal > 0) {
-            datasets.push({
-                label: 'Meta de Gastos (Alerta)',
-                data: Array({{ evolucao_labels_json | safe }}.length).fill(metaMensal),
-                borderColor: '#EF4444',
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                borderWidth: 3,
-                borderDash: [8, 4],
-                type: 'line',
-                fill: '+1',
-                pointRadius: 0,
-                tension: 0
-            });
+        // Se não houver dados suficientes, adiciona meses anteriores para visualização
+        if (labels.length < 6) {
+            const mesesFaltantes = 6 - labels.length;
+            const hoje = new Date();
+            for (let i = mesesFaltantes; i > 0; i--) {
+                const data = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+                const mesAno = data.getFullYear() + '-' + String(data.getMonth() + 1).padStart(2, '0');
+                labels.unshift(mesAno);
+                gastosData.unshift(0);
+            }
+            dadosCompletos.labels = [...labels];
+            dadosCompletos.gastos = [...gastosData];
         }
         
-        // Linha de previsão
-        if (previsao > 0) {
-            datasets.push({
-                label: 'Previsão (Média)',
-                data: Array({{ evolucao_labels_json | safe }}.length).fill(previsao),
-                borderColor: '#FBBF24',
-                borderWidth: 2,
-                borderDash: [4, 4],
-                type: 'line',
-                fill: false,
-                pointRadius: 0,
-                tension: 0
-            });
+        let chartInstance = null;
+        
+        function filtrarPeriodo(meses) {
+            const numMeses = parseInt(meses);
+            const labelsFiltered = dadosCompletos.labels.slice(-numMeses);
+            const gastosFiltered = dadosCompletos.gastos.slice(-numMeses);
+            
+            atualizarGrafico(labelsFiltered, gastosFiltered);
         }
         
-        new Chart(document.getElementById('evolucaoChart'), {
-            type: 'bar',
-            data: {
-                labels: {{ evolucao_labels_json | safe }},
-                datasets: datasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { 
-                    legend: { 
-                        display: true, 
-                        position: 'top',
-                        labels: { padding: 15, usePointStyle: true }
+        function atualizarGrafico(labelsData, gastosDataArray) {
+            const maxGasto = gastosDataArray.length > 0 ? Math.max(...gastosDataArray) : 0;
+            
+            let yMax;
+            if (salario > 0) {
+                yMax = salario;
+            } else {
+                yMax = Math.max(metaMensal, maxGasto, previsao) * 1.15;
+                if (yMax < 1000) yMax = 1000;
+            }
+            
+            const datasets = [{
+                label: 'Gastos',
+                data: gastosDataArray,
+                backgroundColor: '#10B981',
+                borderRadius: 6,
+                barThickness: 40
+            }];
+            
+            if (metaMensal > 0) {
+                datasets.push({
+                    label: 'Meta de Gastos',
+                    data: Array(labelsData.length).fill(metaMensal),
+                    borderColor: '#EF4444',
+                    borderWidth: 3,
+                    type: 'line',
+                    fill: false
+                });
+            }
+            
+            if (previsao > 0) {
+                datasets.push({
+                    label: 'Previsão (Média)',
+                    data: Array(labelsData.length).fill(previsao),
+                    borderColor: '#FBBF24',
+                    borderWidth: 2,
+                    borderDash: [4, 4],
+                    type: 'line',
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0
+                });
+            }
+            
+            if (chartInstance) {
+                chartInstance.data.labels = labelsData;
+                chartInstance.data.datasets = datasets;
+                chartInstance.options.scales.y.max = yMax;
+                chartInstance.update();
+            } else {
+                chartInstance = new Chart(document.getElementById('evolucaoChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: labelsData,
+                        datasets: datasets
                     },
-                    tooltip: {
-                        callbacks: {
-                            footer: function(context) {
-                                if (salario > 0) {
-                                    return 'Salário: R$ ' + salario.toLocaleString('pt-BR');
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { 
+                            legend: { 
+                                display: true, 
+                                position: 'top',
+                                labels: { padding: 15, usePointStyle: true }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    footer: function(context) {
+                                        if (salario > 0) {
+                                            return 'Salário: R$ ' + salario.toLocaleString('pt-BR');
+                                        }
+                                        return '';
+                                    }
                                 }
-                                return '';
-                            }
-                        }
-                    }
-                },
-                scales: { 
-                    y: { 
-                        beginAtZero: true,
-                        max: yMax,
-                        ticks: { 
-                            callback: v => 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 0}),
-                            color: function(context) {
-                                // Destaca o valor do salário no eixo Y
-                                if (salario > 0 && Math.abs(context.tick.value - salario) < 1) {
-                                    return '#EF4444';
-                                }
-                                return '#6B7280';
                             }
                         },
-                        grid: { 
-                            color: function(context) {
-                                // Linha mais forte no valor do salário
-                                if (salario > 0 && Math.abs(context.tick.value - salario) < 1) {
-                                    return 'rgba(239, 68, 68, 0.3)';
-                                }
-                                return 'rgba(0,0,0,0.05)';
-                            }
+                        scales: { 
+                            y: { 
+                                beginAtZero: true,
+                                max: yMax,
+                                ticks: { 
+                                    callback: v => 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 0})
+                                },
+                                grid: { color: 'rgba(0,0,0,0.05)' }
+                            },
+                            x: { grid: { display: false } }
                         }
-                    },
-                    x: { grid: { display: false } }
-                }
+                    }
+                });
             }
-        });
+        }
+        
+        // Inicializa com 12 meses
+        atualizarGrafico(labels, gastosData);
 
         // Gráfico Pizza
         new Chart(document.getElementById('gastosChart'), {
