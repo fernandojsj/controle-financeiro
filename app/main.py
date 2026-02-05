@@ -201,6 +201,22 @@ async def dashboard(request: Request, mes: str = Query(None), session_token: str
         "meses_disponiveis": meses_disponiveis
     })
 
+@app.post("/adicionar-gasto")
+async def adicionar_gasto(valor: float = Form(...), estabelecimento: str = Form(...), categoria: str = Form(...), banco: str = Form(...), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+    novo_gasto = Gasto(
+        usuario_id=usuario.id,
+        valor=valor,
+        estabelecimento=estabelecimento,
+        categoria=categoria,
+        banco=banco,
+        raw_text=f"Gasto manual: {estabelecimento}",
+        data_compra=datetime.now(),
+        mes_referencia=calcular_mes_referencia(session, usuario.id)
+    )
+    session.add(novo_gasto)
+    session.commit()
+    return RedirectResponse(url="/", status_code=303)
+
 @app.post("/configurar-fatura")
 async def configurar_fatura(dia: int = Form(...), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
     set_dia_fechamento(session, dia, usuario.id)
