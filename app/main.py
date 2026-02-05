@@ -6,13 +6,14 @@ import bcrypt
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Depends, Header, HTTPException, status, Form, Query, Cookie
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlmodel import Session, select, func
 from datetime import datetime
 from collections import defaultdict
 import statistics
+import json
 
 load_dotenv()
 
@@ -21,6 +22,7 @@ from .models import Gasto, Configuracao, Usuario
 from .services import processar_texto_notificacao, calcular_mes_referencia, get_dia_fechamento, set_dia_fechamento, get_meta_mensal, set_meta_mensal, get_salario, set_salario
 
 app = FastAPI(title="Finance Tracker")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 # Função auxiliar para formatar moeda no Template
@@ -29,6 +31,16 @@ def formatar_moeda(valor):
 
 # Registra a função no Jinja2 para usar no HTML
 templates.env.filters["moeda"] = formatar_moeda
+
+# Função para carregar traduções
+def get_translations(lang: str = "pt"):
+    if lang == "en":
+        try:
+            with open("app/static/translations_en.json", "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
 
 # Autenticação
 async def get_current_user(session_token: str = Cookie(None), session: Session = Depends(get_session)):
@@ -79,6 +91,14 @@ async def logout():
     response.delete_cookie("session_token")
     return response
 
+@app.get("/set-language/{lang}")
+async def set_language(lang: str, request: Request, mes: str = Query(None)):
+    # Preserva o parâmetro mes na URL
+    redirect_url = f"/?mes={mes}" if mes else "/"
+    response = RedirectResponse(url=redirect_url, status_code=303)
+    response.set_cookie(key="lang", value=lang, max_age=86400*365, httponly=False)
+    return response
+
 class WebhookPayload(BaseModel):
     raw_text: str
     app_name: str
@@ -89,6 +109,18 @@ async def verify_token(x_token: str = Header(None)):
     expected_token = os.getenv("WEBHOOK_TOKEN", "")
     if not expected_token or x_token != expected_token:
         raise HTTPException(status_code=403, detail="Token inválido")
+
+@app.get("/sw.js")
+async def service_worker():
+    with open("app/templates/sw.js", "r") as f:
+        content = f.read()
+    return Response(content=content, media_type="application/javascript")
+
+@app.get("/manifest.json")
+async def manifest():
+    with open("app/static/manifest.json", "r") as f:
+        content = f.read()
+    return Response(content=content, media_type="application/json")
 
 @app.on_event("startup")
 def on_startup():
@@ -126,7 +158,7 @@ async def receber_gasto(payload: WebhookPayload, session: Session = Depends(get_
     return {"status": "ok"}
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, mes: str = Query(None), session_token: str = Cookie(None), session: Session = Depends(get_session)):
+async def dashboard(request: Request, mes: str = Query(None), lang: str = Cookie(None), session_token: str = Cookie(None), session: Session = Depends(get_session)):
     # Redireciona para login se não autenticado
     if not session_token:
         return RedirectResponse(url="/login", status_code=303)
@@ -134,6 +166,12 @@ async def dashboard(request: Request, mes: str = Query(None), session_token: str
     usuario = session.exec(select(Usuario).where(Usuario.email == session_token)).first()
     if not usuario:
         return RedirectResponse(url="/login", status_code=303)
+    
+    # Define idioma padrão se não existir
+    current_lang = lang if lang in ["pt", "en"] else "pt"
+    
+    # Carrega traduções
+    translations = get_translations(current_lang)
     
     mes_ref_atual = mes or calcular_mes_referencia(session, usuario.id)
     dia_fechamento = get_dia_fechamento(session, usuario.id)
@@ -186,6 +224,7 @@ async def dashboard(request: Request, mes: str = Query(None), session_token: str
         "gastos": gastos,
         "total_mes": total_mes,
         "mes_ref": mes_ref_atual,
+        "mes_atual": calcular_mes_referencia(session, usuario.id),
         "dia_fechamento": dia_fechamento,
         "meta_mensal": meta_mensal,
         "salario": salario,
@@ -198,11 +237,26 @@ async def dashboard(request: Request, mes: str = Query(None), session_token: str
         "variacao": variacao,
         "total_mes_anterior": total_mes_anterior,
         "top5_gastos": top5_gastos,
-        "meses_disponiveis": meses_disponiveis
+        "meses_disponiveis": meses_disponiveis,
+        "lang": current_lang,
+        "t": translations
     })
 
 @app.post("/adicionar-gasto")
-async def adicionar_gasto(valor: float = Form(...), estabelecimento: str = Form(...), categoria: str = Form(...), banco: str = Form(...), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+async def adicionar_gasto(valor: float = Form(...), estabelecimento: str = Form(...), categoria: str = Form(...), banco: str = Form(...), data_gasto: str = Form(...), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+    # Converte a data string para datetime
+    data_compra = datetime.strptime(data_gasto, "%Y-%m-%d")
+    
+    # Calcula o mês de referência baseado na data do gasto
+    dia_fechamento = get_dia_fechamento(session, usuario.id)
+    if data_compra.day >= dia_fechamento:
+        mes_referencia = f"{data_compra.year}-{data_compra.month:02d}"
+    else:
+        if data_compra.month == 1:
+            mes_referencia = f"{data_compra.year - 1}-12"
+        else:
+            mes_referencia = f"{data_compra.year}-{data_compra.month - 1:02d}"
+    
     novo_gasto = Gasto(
         usuario_id=usuario.id,
         valor=valor,
@@ -210,8 +264,8 @@ async def adicionar_gasto(valor: float = Form(...), estabelecimento: str = Form(
         categoria=categoria,
         banco=banco,
         raw_text=f"Gasto manual: {estabelecimento}",
-        data_compra=datetime.now(),
-        mes_referencia=calcular_mes_referencia(session, usuario.id)
+        data_compra=data_compra,
+        mes_referencia=mes_referencia
     )
     session.add(novo_gasto)
     session.commit()
@@ -228,6 +282,48 @@ async def configurar_meta(meta: float = Form(...), salario: float = Form(0), ses
     if salario > 0:
         set_salario(session, salario, usuario.id)
     return RedirectResponse(url="/", status_code=303)
+
+@app.post("/editar-gasto")
+async def editar_gasto(gasto_id: int = Form(...), valor: float = Form(...), estabelecimento: str = Form(...), categoria: str = Form(...), data_gasto: str = Form(...), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+    # Busca o gasto
+    gasto = session.exec(select(Gasto).where(Gasto.id == gasto_id, Gasto.usuario_id == usuario.id)).first()
+    if not gasto:
+        raise HTTPException(status_code=404, detail="Gasto não encontrado")
+    
+    # Converte a data string para datetime
+    data_compra = datetime.strptime(data_gasto, "%Y-%m-%d")
+    
+    # Calcula o mês de referência baseado na data do gasto
+    dia_fechamento = get_dia_fechamento(session, usuario.id)
+    if data_compra.day >= dia_fechamento:
+        mes_referencia = f"{data_compra.year}-{data_compra.month:02d}"
+    else:
+        if data_compra.month == 1:
+            mes_referencia = f"{data_compra.year - 1}-12"
+        else:
+            mes_referencia = f"{data_compra.year}-{data_compra.month - 1:02d}"
+    
+    # Atualiza o gasto
+    gasto.valor = valor
+    gasto.estabelecimento = estabelecimento
+    gasto.categoria = categoria
+    gasto.data_compra = data_compra
+    gasto.mes_referencia = mes_referencia
+    
+    session.commit()
+    return RedirectResponse(url="/", status_code=303)
+
+@app.post("/excluir-gasto")
+async def excluir_gasto(gasto_id: int = Form(...), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+    # Busca o gasto
+    gasto = session.exec(select(Gasto).where(Gasto.id == gasto_id, Gasto.usuario_id == usuario.id)).first()
+    if not gasto:
+        raise HTTPException(status_code=404, detail="Gasto não encontrado")
+    
+    # Exclui o gasto
+    session.delete(gasto)
+    session.commit()
+    return {"status": "ok"}
 
 @app.get("/exportar")
 async def exportar_csv(mes: str = Query(None), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):

@@ -1,90 +1,367 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="{{ 'en' if lang == 'en' else 'pt-br' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle Financeiro</title>
+    <meta name="description" content="{{ t.get('description', 'Controle financeiro pessoal inteligente') }}">
+    <meta name="theme-color" content="#3B82F6">
+    <title>{{ t.get('app_name', 'FinanceTracker') }}</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="FinanceTracker">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind + DaisyUI -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
+    
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- AOS Animations -->
+    <!-- <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script> -->
+    
     <meta http-equiv="refresh" content="30">
+    
+    <script>
+        // Configura Tailwind
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <script>
+        // Aplica tema antes de renderizar para evitar flash
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+            
+            document.documentElement.classList.toggle('dark', theme === 'dark');
+            document.documentElement.setAttribute('data-theme', theme);
+            
+            if (!savedTheme) {
+                localStorage.setItem('theme', theme);
+            }
+        })();
+    </script>
+    
+    <style>
+        @media (prefers-color-scheme: dark) {
+            .dark { color-scheme: dark; }
+        }
+        
+        /* Smooth transitions */
+        * {
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
+        
+        /* Fade in suave ao carregar */
+        body {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* Overlay para transição suave */
+        #transition-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--overlay-bg);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9999;
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        #transition-overlay.active {
+            opacity: 1;
+        }
+        
+        :root {
+            --overlay-bg: rgba(255, 255, 255, 0.95);
+        }
+        
+        .dark {
+            --overlay-bg: rgba(17, 24, 39, 0.95);
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 4px;
+        }
+        
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+        
+        /* Glassmorphism effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .dark .glass {
+            background: rgba(31, 41, 55, 0.9);
+            border: 1px solid rgba(75, 85, 99, 0.2);
+        }
+    </style>
 </head>
-<body class="bg-gray-50 transition-colors duration-200">
-
-    <div class="min-h-screen">
-        <!-- Header -->
-        <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-4">
-                        <h1 class="text-2xl font-semibold text-gray-900">Controle Financeiro</h1>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 font-sans antialiased">
+    <!-- Overlay de transição -->
+    <div id="transition-overlay"></div>
+    
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="w-64 bg-white dark:bg-gray-800 shadow-2xl flex flex-col border-r border-gray-200 dark:border-gray-700" data-aos="fade-right">
+            <!-- Logo/Header -->
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-600 to-indigo-600">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
                     </div>
-                    <div class="flex gap-2">
-                        <button onclick="document.getElementById('modalAddGasto').classList.remove('hidden')" 
-                                class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                            </svg>
-                            Adicionar Gasto
-                        </button>
-                        <a href="/exportar?mes={{ mes_ref }}" 
-                           class="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                            </svg>
-                            Exportar
-                        </a>
-                        <button onclick="document.getElementById('modalMeta').classList.remove('hidden')" 
-                                class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                            Configurar Finanças
-                        </button>
-                        <button onclick="document.getElementById('modalConfig').classList.remove('hidden')" 
-                                class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                            Configurações
-                        </button>
+                    <div>
+                        <h1 class="text-lg font-bold text-white">{{ t.get('app_name', 'FinanceTracker') }}</h1>
+                        <p class="text-xs text-blue-100">{{ t.get('subtitle', 'Controle Financeiro') }}</p>
                     </div>
                 </div>
             </div>
-        </header>
+            
+            <!-- Navigation -->
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+                <a href="/" class="flex items-center gap-3 px-4 py-3 text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl font-medium shadow-lg transform hover:scale-105 transition-all duration-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    </svg>
+                    {{ t.get('dashboard', 'Dashboard') }}
+                </a>
+                
+                <button onclick="document.getElementById('modalAddGasto').classList.remove('hidden')" 
+                        class="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl font-medium transition-all duration-200 hover:translate-x-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    {{ t.get('new_expense', 'Novo Gasto') }}
+                </button>
+                
+                <a href="/exportar?mes={{ mes_ref }}" 
+                   class="flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl font-medium transition-all duration-200 hover:translate-x-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    {{ t.get('export_data', 'Exportar Dados') }}
+                </a>
+                
+                <div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                    <p class="px-4 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">{{ t.get('settings', 'Configurações') }}</p>
+                    
+                    <button onclick="document.getElementById('modalOrcamento').classList.remove('hidden')" 
+                            class="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl font-medium transition-all duration-200 hover:translate-x-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+                        </svg>
+                        {{ t.get('budget', 'Orçamento') }}
+                    </button>
+                    
+                    <button onclick="document.getElementById('modalCiclo').classList.remove('hidden')" 
+                            class="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl font-medium transition-all duration-200 hover:translate-x-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        {{ t.get('billing_cycle', 'Ciclo de Fatura') }}
+                    </button>
+                </div>
+            </nav>
+            
+            <!-- Controles de Tema e Idioma -->
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
+                <button onclick="toggleTheme()" 
+                        class="w-full flex items-center gap-3 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition">
+                    <svg id="themeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                    </svg>
+                    <span id="themeText">{{ t.get('dark_mode', 'Modo Escuro') }}</span>
+                </button>
+                
+                <div class="flex gap-2">
+                    <a href="#" onclick="changeLanguage('pt'); return false;" 
+                       class="flex-1 text-center px-3 py-2 text-sm {{ 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' if lang != 'en' else 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' }} rounded-lg font-medium transition">
+                        PT
+                    </a>
+                    <a href="#" onclick="changeLanguage('en'); return false;" 
+                       class="flex-1 text-center px-3 py-2 text-sm {{ 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' if lang == 'en' else 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' }} rounded-lg font-medium transition">
+                        EN
+                    </a>
+                </div>
+            </div>
+            
+            <!-- User Section -->
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-8 h-8 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center">
+                        <span class="text-white text-sm font-medium">U</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-800 dark:text-white truncate">{{ t.get('user', 'Usuário') }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.get('logged_in', 'Logado') }}</p>
+                    </div>
+                </div>
+                <a href="/logout" 
+                   class="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    {{ t.get('logout', 'Sair') }}
+                </a>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Bar -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-2xl font-semibold text-gray-800 dark:text-white">{{ t.get('financial_dashboard', 'Dashboard Financeiro') }}</h2>
+                        <div class="flex items-center gap-4 mt-1">
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{{ t.get('period', 'Período') }}:</p>
+                            <select onchange="window.location.href='/?mes='+this.value" 
+                                    class="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg px-3 py-1.5 font-medium cursor-pointer focus:ring-2 focus:ring-blue-500">
+                                {% for mes in meses_disponiveis %}
+                                <option value="{{ mes }}" {% if mes == mes_ref %}selected{% endif %}>
+                                    {{ mes.split('-')[1] }}/{{ mes.split('-')[0] }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="text-right">
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{{ t.get('month_total', 'Total do Mês') }}</p>
+                            <p class="text-xl font-bold text-gray-800 dark:text-white">R$ {{ total_mes | moeda }}</p>
+                        </div>
+                    </div>
+                </div>
+            </header>
 
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-auto p-6 space-y-6 bg-gray-100 dark:bg-gray-900">
+            
+            <!-- Alerta para mês anterior -->
+            {% if mes_ref != mes_atual %}
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                    <div>
+                        <p class="font-medium text-yellow-800">Visualizando mês anterior</p>
+                        <p class="text-sm text-yellow-700">Você está vendo dados de {{ mes_ref.split('-')[1] }}/{{ mes_ref.split('-')[0] }}. Gastos adicionados aqui serão registrados neste período.</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             
             <!-- Cards Principais -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-500">
-                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Total do Mês</h3>
-                    <p class="text-3xl font-bold text-gray-900 mb-3">R$ {{ total_mes | moeda }}</p>
-                    {% if meta_mensal > 0 %}
-                    <div class="space-y-1">
-                        <div class="flex justify-between text-xs text-gray-600">
-                            <span>Meta: R$ {{ meta_mensal | moeda }}</span>
-                            <span class="font-semibold">{{ (total_mes/meta_mensal*100)|round|int }}%</span>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="glass rounded-2xl shadow-xl p-6 border-l-4 border-blue-500 hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300" data-aos="fade-up" data-aos-delay="0">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t.get('total_month', 'Total do Mês') }}</h3>
+                        <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
                         </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div class="h-full rounded-full transition-all {% if total_mes > meta_mensal %}bg-red-500{% else %}bg-blue-500{% endif %}" 
+                    </div>
+                    <p class="text-3xl font-extrabold text-gray-900 dark:text-white mb-3 tracking-tight">R$ {{ total_mes | moeda }}</p>
+                    {% if meta_mensal > 0 %}
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs text-gray-600 dark:text-gray-400 font-medium">
+                            <span>{{ t.get('goal', 'Meta') }}: R$ {{ meta_mensal | moeda }}</span>
+                            <span class="font-bold">{{ (total_mes/meta_mensal*100)|round|int }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-500 {% if total_mes > meta_mensal %}bg-gradient-to-r from-red-500 to-red-600{% else %}bg-gradient-to-r from-blue-500 to-blue-600{% endif %}" 
                                  style="width: {{ [100, (total_mes/meta_mensal*100)|round|int]|min }}%"></div>
                         </div>
                     </div>
                     {% endif %}
                 </div>
 
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Variação Mensal</h3>
-                    <p class="text-3xl font-bold {% if variacao > 0 %}text-red-500{% else %}text-green-500{% endif %} mb-1">
+                <div class="glass rounded-2xl shadow-xl p-6 hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300" data-aos="fade-up" data-aos-delay="100">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t.get('monthly_variation', 'Variação Mensal') }}</h3>
+                        <div class="w-10 h-10 {% if variacao > 0 %}bg-red-100 dark:bg-red-900/30{% else %}bg-green-100 dark:bg-green-900/30{% endif %} rounded-xl flex items-center justify-center">
+                            <svg class="w-5 h-5 {% if variacao > 0 %}text-red-600 dark:text-red-400{% else %}text-green-600 dark:text-green-400{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{% if variacao > 0 %}M13 17h8m0 0V9m0 8l-8-8-4 4-6-6{% else %}M13 7h8m0 0v8m0-8l-8 8-4-4-6 6{% endif %}"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-3xl font-extrabold {% if variacao > 0 %}text-red-500{% else %}text-green-500{% endif %} mb-1 tracking-tight">
                         {% if variacao > 0 %}+{% endif %}{{ "%.1f"|format(variacao) }}%
                     </p>
-                    <p class="text-xs text-gray-500">Mês anterior: R$ {{ total_mes_anterior | moeda }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">{{ t.get('previous_month', 'Mês anterior') }}: R$ {{ total_mes_anterior | moeda }}</p>
                 </div>
 
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Previsão</h3>
-                    <p class="text-3xl font-bold text-gray-900 mb-1">R$ {{ previsao | moeda }}</p>
-                    <p class="text-xs text-gray-500">Média últimos 3 meses</p>
+                <div class="glass rounded-2xl shadow-xl p-6 hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300" data-aos="fade-up" data-aos-delay="200">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t.get('forecast', 'Previsão') }}</h3>
+                        <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
+                            <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-3xl font-extrabold text-gray-900 dark:text-white mb-1 tracking-tight">R$ {{ previsao | moeda }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">{{ t.get('average_last_3_months', 'Média últimos 3 meses') }}</p>
                 </div>
 
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Fechamento</h3>
-                    <p class="text-3xl font-bold text-gray-900 mb-1">Dia {{ dia_fechamento }}</p>
-                    <p class="text-xs text-gray-500">Data de vencimento</p>
+                <div class="glass rounded-2xl shadow-xl p-6 hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300" data-aos="fade-up" data-aos-delay="300">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t.get('closing', 'Fechamento') }}</h3>
+                        <div class="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
+                            <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-3xl font-extrabold text-gray-900 dark:text-white mb-1 tracking-tight">{{ t.get('day', 'Dia') }} {{ dia_fechamento }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">{{ t.get('due_date', 'Data de vencimento') }}</p>
                 </div>
             </div>
 
@@ -92,15 +369,15 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 <!-- Gráfico Evolução -->
-                <div class="lg:col-span-2 bg-white rounded-lg shadow-sm p-6">
+                <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-semibold text-gray-900">Evolução dos Gastos</h2>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t.get('expense_evolution', 'Evolução dos Gastos') }}</h2>
                         <select id="periodoFiltro" onchange="filtrarPeriodo(this.value)" 
-                                class="bg-gray-100 border border-gray-300 text-gray-700 text-xs rounded-lg px-3 py-1.5 font-medium cursor-pointer focus:ring-2 focus:ring-blue-500">
-                            <option value="1">1 Mês</option>
-                            <option value="3">3 Meses</option>
-                            <option value="6">6 Meses</option>
-                            <option value="12" selected>12 Meses</option>
+                                class="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-xs rounded-lg px-3 py-1.5 font-medium cursor-pointer focus:ring-2 focus:ring-blue-500">
+                            <option value="1">{{ t.get('1_month', '1 Mês') }}</option>
+                            <option value="3">{{ t.get('3_months', '3 Meses') }}</option>
+                            <option value="6">{{ t.get('6_months', '6 Meses') }}</option>
+                            <option value="12" selected>{{ t.get('12_months', '12 Meses') }}</option>
                         </select>
                     </div>
                     <div class="h-72">
@@ -109,8 +386,8 @@
                 </div>
 
                 <!-- Gráfico Pizza -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Distribuição por Categoria</h2>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ t.get('distribution_by_category', 'Distribuição por Categoria') }}</h2>
                     <div class="h-72">
                         <canvas id="gastosChart"></canvas>
                     </div>
@@ -121,36 +398,36 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 <!-- Top 5 Maiores Gastos -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Maiores Gastos do Mês</h2>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ t.get('top_expenses', 'Maiores Gastos do Mês') }}</h2>
                     <div class="space-y-3">
                         {% for gasto in top5_gastos %}
-                        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                        <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                             <div class="flex-1 min-w-0">
-                                <p class="font-medium text-gray-900 truncate">{{ gasto.estabelecimento }}</p>
-                                <p class="text-xs text-gray-500">{{ gasto.data_compra.strftime('%d/%m/%Y às %H:%M') }}</p>
+                                <p class="font-medium text-gray-900 dark:text-white truncate">{{ gasto.estabelecimento }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ gasto.data_compra.strftime('%d/%m/%Y às %H:%M') }}</p>
                             </div>
-                            <span class="font-bold text-gray-900 ml-3">R$ {{ gasto.valor | moeda }}</span>
+                            <span class="font-bold text-gray-900 dark:text-white ml-3">R$ {{ gasto.valor | moeda }}</span>
                         </div>
                         {% else %}
-                        <p class="text-center text-gray-400 py-8">Nenhum gasto registrado</p>
+                        <p class="text-center text-gray-400 dark:text-gray-500 py-8">{{ t.get('no_expenses', 'Nenhum gasto registrado') }}</p>
                         {% endfor %}
                     </div>
                 </div>
 
                 <!-- Resumo por Categoria -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Resumo por Categoria</h2>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ t.get('category_summary', 'Resumo por Categoria') }}</h2>
                     <div class="space-y-3">
                         {% for categoria, dados in categorias[:5] %}
-                        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                        <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
                             <div class="flex-1">
-                                <p class="font-medium text-gray-900 text-sm">{{ categoria }}</p>
-                                <p class="text-xs text-gray-500">{{ dados.quantidade }} transações</p>
+                                <p class="font-medium text-gray-900 dark:text-white text-sm">{{ categoria }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ dados.quantidade }} {{ t.get('transactions', 'transações') }}</p>
                             </div>
                             <div class="text-right">
-                                <p class="font-bold text-gray-900 text-sm">R$ {{ dados.total | moeda }}</p>
-                                <p class="text-xs text-blue-600 font-medium">{{ "%.0f"|format((dados.total / total_mes * 100) if total_mes > 0 else 0) }}%</p>
+                                <p class="font-bold text-gray-900 dark:text-white text-sm">R$ {{ dados.total | moeda }}</p>
+                                <p class="text-xs text-blue-600 dark:text-blue-400 font-medium">{{ "%.0f"|format((dados.total / total_mes * 100) if total_mes > 0 else 0) }}%</p>
                             </div>
                         </div>
                         {% endfor %}
@@ -159,12 +436,12 @@
             </div>
 
             <!-- Extrato -->
-            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200 flex flex-wrap justify-between items-center gap-3">
-                    <h2 class="text-lg font-semibold text-gray-900">Extrato Completo</h2>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap justify-between items-center gap-3">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t.get('full_statement', 'Extrato Completo') }}</h2>
                     <div class="relative">
-                        <input type="text" id="searchInput" placeholder="Buscar transação..." 
-                               class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64">
+                        <input type="text" id="searchInput" placeholder="{{ t.get('search_transaction', 'Buscar transação...') }}" 
+                               class="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64">
                         <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
@@ -172,56 +449,77 @@
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full" id="extratoTable">
-                        <thead class="bg-gray-50 border-b border-gray-200">
-                            <tr class="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                <th class="px-6 py-3 text-left">Data</th>
-                                <th class="px-6 py-3 text-left">Estabelecimento</th>
-                                <th class="px-6 py-3 text-left">Categoria</th>
-                                <th class="px-6 py-3 text-right">Valor</th>
+                        <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                            <tr class="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                                <th class="px-6 py-3 text-left">{{ t.get('date', 'Data') }}</th>
+                                <th class="px-6 py-3 text-left">{{ t.get('establishment', 'Estabelecimento') }}</th>
+                                <th class="px-6 py-3 text-left">{{ t.get('category', 'Categoria') }}</th>
+                                <th class="px-6 py-3 text-right">{{ t.get('value', 'Valor') }}</th>
+                                <th class="px-6 py-3 text-center">{{ t.get('actions', 'Ações') }}</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                             {% for gasto in gastos %}
-                            <tr class="hover:bg-gray-50 transition">
-                                <td class="px-6 py-4 text-sm text-gray-600 font-mono whitespace-nowrap">{{ gasto.data_compra.strftime('%d/%m %H:%M') }}</td>
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ gasto.estabelecimento }}</td>
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 font-mono whitespace-nowrap">{{ gasto.data_compra.strftime('%d/%m %H:%M') }}</td>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{{ gasto.estabelecimento }}</td>
                                 <td class="px-6 py-4">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
                                         {{ gasto.categoria }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 text-sm font-semibold text-gray-900 text-right whitespace-nowrap">R$ {{ gasto.valor | moeda }}</td>
+                                <td class="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white text-right whitespace-nowrap">R$ {{ gasto.valor | moeda }}</td>
+                                <td class="px-6 py-4 text-center">
+                                    <button onclick="editarGasto({{ gasto.id }}, '{{ gasto.estabelecimento }}', '{{ gasto.categoria }}', {{ gasto.valor }}, '{{ gasto.data_compra.strftime('%Y-%m-%d') }}')" 
+                                            class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mr-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                    </button>
+                                    <button onclick="excluirGasto({{ gasto.id }})" 
+                                            class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                    </button>
+                                </td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="4" class="px-6 py-12 text-center text-gray-400">Nenhum gasto registrado neste mês</td></tr>
+                            <tr><td colspan="5" class="px-6 py-12 text-center text-gray-400 dark:text-gray-500">{{ t.get('no_expenses_month', 'Nenhum gasto registrado neste mês') }}</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
-        </main>
+            </main>
+        </div>
     </div>
 
     <!-- Modal Add Gasto -->
     <div id="modalAddGasto" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-md">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-xl font-semibold text-gray-900">Adicionar Gasto Manual</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-md">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Adicionar Gasto Manual</h3>
             </div>
             <form method="POST" action="/adicionar-gasto" class="p-6 space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Valor (R$)</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Data do Gasto</label>
+                    <input type="date" name="data_gasto" required 
+                           class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Valor (R$)</label>
                     <input type="number" name="valor" step="0.01" required placeholder="0.00"
-                           class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                           class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Estabelecimento</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estabelecimento</label>
                     <input type="text" name="estabelecimento" required placeholder="Ex: Supermercado"
-                           class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                           class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
-                    <select name="categoria" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Categoria</label>
+                    <select name="categoria" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="Alimentação">Alimentação</option>
                         <option value="Transporte">Transporte</option>
                         <option value="Lazer/Assinaturas">Lazer/Assinaturas</option>
@@ -230,13 +528,13 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Banco/Cartão</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Banco/Cartão</label>
                     <input type="text" name="banco" required placeholder="Ex: Nubank"
-                           class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                           class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
                 <div class="flex gap-3 mt-6">
                     <button type="button" onclick="document.getElementById('modalAddGasto').classList.add('hidden')" 
-                            class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2.5 rounded-lg font-medium transition">
+                            class="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-lg font-medium transition">
                         Cancelar
                     </button>
                     <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition">
@@ -247,22 +545,155 @@
         </div>
     </div>
 
-    <!-- Modal Config -->
-    <div id="modalConfig" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-md">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-xl font-semibold text-gray-900">Configurar Fatura</h3>
+    <!-- Modal Orçamento -->
+    <div id="modalOrcamento" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-2xl">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Configurar Orçamento</h3>
             </div>
-            <form method="POST" action="/configurar-fatura" class="p-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Dia de Fechamento</label>
-                <input type="number" name="dia" min="1" max="31" value="{{ dia_fechamento }}" 
-                       class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <form method="POST" action="/configurar-meta" class="p-6 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Renda Mensal (R$)</label>
+                        <input type="number" name="salario" step="0.01" value="{{ salario if salario > 0 else '' }}" placeholder="5.000,00"
+                               class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               oninput="calcularRegra5030()">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Define o limite superior dos gráficos</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Limite de Gastos (R$)</label>
+                        <input type="number" name="meta" step="0.01" value="{{ meta_mensal if meta_mensal > 0 else '' }}" placeholder="3.000,00"
+                               class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Linha de alerta nos gráficos</p>
+                    </div>
+                </div>
+                
+                <!-- Regra 50-30-20 -->
+                <div id="regra5030" class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600 rounded-xl p-6 border border-blue-200 dark:border-gray-600">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                </svg>
+                            </div>
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white">Sugestão de Orçamento</h4>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="toggleModo('padrao')" id="btnPadrao" class="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm transition">
+                                Padrão 50-30-20
+                            </button>
+                            <button type="button" onclick="toggleModo('customizado')" id="btnCustomizado" class="px-3 py-1.5 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm transition">
+                                Customizado
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Modo Padrão -->
+                    <div id="modoPadrao">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                    <h5 class="font-semibold text-gray-800 dark:text-white">50% - Essenciais</h5>
+                                </div>
+                                <p class="text-2xl font-bold text-green-600 dark:text-green-400" id="essenciais">R$ {{ (salario * 0.5) | moeda if salario > 0 else '0,00' }}</p>
+                                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Moradia, alimentação, transporte, contas básicas</p>
+                            </div>
+                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-orange-200 dark:border-orange-700">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-3 h-3 bg-orange-500 rounded-full"></div>
+                                    <h5 class="font-semibold text-gray-800 dark:text-white">30% - Desejos</h5>
+                                </div>
+                                <p class="text-2xl font-bold text-orange-600 dark:text-orange-400" id="desejos">R$ {{ (salario * 0.3) | moeda if salario > 0 else '0,00' }}</p>
+                                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Lazer, restaurantes, compras não essenciais</p>
+                            </div>
+                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                                    <h5 class="font-semibold text-gray-800 dark:text-white">20% - Poupança</h5>
+                                </div>
+                                <p class="text-2xl font-bold text-blue-600 dark:text-blue-400" id="poupanca">R$ {{ (salario * 0.2) | moeda if salario > 0 else '0,00' }}</p>
+                                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Investimentos, reserva de emergência</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="aplicarSugestao('essenciais')" 
+                                    class="px-3 py-1.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-800 transition">
+                                Usar 50% como limite
+                            </button>
+                            <button type="button" onclick="aplicarSugestao('gastos')" 
+                                    class="px-3 py-1.5 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 rounded-lg text-sm hover:bg-orange-200 dark:hover:bg-orange-800 transition">
+                                Usar 80% como limite
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Modo Customizado -->
+                    <div id="modoCustomizado" class="hidden">
+                        <div class="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 mb-4">
+                            <h5 class="font-semibold text-yellow-800 dark:text-yellow-300 mb-2">Para quem mora com família ou tem poucos gastos essenciais</h5>
+                            <p class="text-sm text-yellow-700 dark:text-yellow-400">Recomendação: 20-30% gastos, 70-80% investimentos/poupança</p>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                    <h5 class="font-semibold text-gray-800 dark:text-white">Gastos Pessoais</h5>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="percGastos" min="10" max="60" value="25" 
+                                           class="flex-1" oninput="atualizarCustomizado()">
+                                    <span id="percGastosLabel" class="text-sm font-medium text-gray-900 dark:text-white w-12">25%</span>
+                                </div>
+                                <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-2" id="valorGastos">R$ 0,00</p>
+                                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Alimentação, transporte, lazer</p>
+                            </div>
+                            
+                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                                    <h5 class="font-semibold text-gray-800 dark:text-white">Investimentos</h5>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="percInvest" min="30" max="80" value="60" 
+                                           class="flex-1" oninput="atualizarCustomizado()">
+                                    <span id="percInvestLabel" class="text-sm font-medium text-gray-900 dark:text-white w-12">60%</span>
+                                </div>
+                                <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-2" id="valorInvest">R$ 0,00</p>
+                                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Poupança, reserva, ações</p>
+                            </div>
+                            
+                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
+                                    <h5 class="font-semibold text-gray-800 dark:text-white">Reserva</h5>
+                                </div>
+                                <p class="text-2xl font-bold text-purple-600 dark:text-purple-400" id="valorReserva">R$ 0,00</p>
+                                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Sobra automática</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button type="button" onclick="aplicarCustomizado('gastos')" 
+                                    class="px-3 py-1.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-800 transition">
+                                Usar % gastos como limite
+                            </button>
+                            <button type="button" onclick="aplicarCustomizado('total')" 
+                                    class="px-3 py-1.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg text-sm hover:bg-blue-200 dark:hover:bg-blue-800 transition">
+                                Usar gastos + investimentos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="flex gap-3 mt-6">
-                    <button type="button" onclick="document.getElementById('modalConfig').classList.add('hidden')" 
-                            class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2.5 rounded-lg font-medium transition">
+                    <button type="button" onclick="document.getElementById('modalOrcamento').classList.add('hidden')" 
+                            class="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-lg font-medium transition">
                         Cancelar
                     </button>
-                    <button type="submit" class="flex-1 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2.5 rounded-lg font-medium transition">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition">
                         Salvar
                     </button>
                 </div>
@@ -270,32 +701,70 @@
         </div>
     </div>
 
-    <!-- Modal Meta -->
-    <div id="modalMeta" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-md">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-xl font-semibold text-gray-900">Configurar Finanças</h3>
+    <!-- Modal Ciclo -->
+    <div id="modalCiclo" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-md">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Configurar Ciclo de Fatura</h3>
             </div>
-            <form method="POST" action="/configurar-meta" class="p-6 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Salário Mensal (R$)</label>
-                    <input type="number" name="salario" step="0.01" value="{{ salario }}" placeholder="0.00"
-                           class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <p class="text-xs text-gray-500 mt-1">Define o topo do gráfico de evolução</p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Meta de Gastos (R$)</label>
-                    <input type="number" name="meta" step="0.01" value="{{ meta_mensal }}" placeholder="0.00"
-                           class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <p class="text-xs text-gray-500 mt-1">Linha vermelha de alerta no gráfico</p>
-                </div>
+            <form method="POST" action="/configurar-fatura" class="p-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dia de Fechamento</label>
+                <input type="number" name="dia" min="1" max="31" value="{{ dia_fechamento }}" 
+                       class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Define quando o mês de referência muda</p>
                 <div class="flex gap-3 mt-6">
-                    <button type="button" onclick="document.getElementById('modalMeta').classList.add('hidden')" 
-                            class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2.5 rounded-lg font-medium transition">
+                    <button type="button" onclick="document.getElementById('modalCiclo').classList.add('hidden')" 
+                            class="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-lg font-medium transition">
                         Cancelar
                     </button>
-                    <button type="submit" class="flex-1 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2.5 rounded-lg font-medium transition">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition">
                         Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Editar Gasto -->
+    <div id="modalEditarGasto" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-md">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Editar Gasto</h3>
+            </div>
+            <form method="POST" action="/editar-gasto" class="p-6 space-y-4">
+                <input type="hidden" name="gasto_id" id="editGastoId">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Data do Gasto</label>
+                    <input type="date" name="data_gasto" id="editDataGasto" required 
+                           class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Valor (R$)</label>
+                    <input type="number" name="valor" id="editValor" step="0.01" required placeholder="0.00"
+                           class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estabelecimento</label>
+                    <input type="text" name="estabelecimento" id="editEstabelecimento" required placeholder="Ex: Supermercado"
+                           class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Categoria</label>
+                    <select name="categoria" id="editCategoria" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Lazer/Assinaturas">Lazer/Assinaturas</option>
+                        <option value="Saúde">Saúde</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="button" onclick="document.getElementById('modalEditarGasto').classList.add('hidden')" 
+                            class="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2.5 rounded-lg font-medium transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg font-medium transition">
+                        Salvar Alterações
                     </button>
                 </div>
             </form>
@@ -303,6 +772,219 @@
     </div>
 
     <script>
+        // Registra Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registrado'))
+                    .catch(err => console.log('Erro ao registrar Service Worker', err));
+            });
+        }
+        
+        // Função para alternar tema
+        function toggleTheme() {
+            const overlay = document.getElementById('transition-overlay');
+            const html = document.documentElement;
+            const isDark = html.classList.contains('dark');
+            const newTheme = isDark ? 'light' : 'dark';
+            
+            // Ativa overlay
+            overlay.classList.add('active');
+            
+            // Aguarda animação e recarrega
+            setTimeout(() => {
+                html.classList.toggle('dark', newTheme === 'dark');
+                html.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                location.reload();
+            }, 400);
+        }
+        
+        // Função para trocar idioma preservando mês
+        function changeLanguage(lang) {
+            const overlay = document.getElementById('transition-overlay');
+            const urlParams = new URLSearchParams(window.location.search);
+            const mes = urlParams.get('mes');
+            const url = `/set-language/${lang}${mes ? '?mes=' + mes : ''}`;
+            
+            // Ativa overlay
+            overlay.classList.add('active');
+            
+            // Aguarda animação e navega
+            setTimeout(() => window.location.href = url, 400);
+        }
+        
+        function updateThemeButton(theme) {
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            const isDark = theme === 'dark';
+            
+            if (isDark) {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>';
+                text.textContent = '{{ t.get("light_mode", "Modo Claro") }}';
+            } else {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>';
+                text.textContent = '{{ t.get("dark_mode", "Modo Escuro") }}';
+            }
+        }
+        
+        // Atualiza ícone e texto do tema ao carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            // Remove animações AOS para carregamento mais rápido
+            document.querySelectorAll('[data-aos]').forEach(el => {
+                el.removeAttribute('data-aos');
+                el.removeAttribute('data-aos-delay');
+            });
+            
+            // Atualiza botão de tema
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            updateThemeButton(currentTheme);
+            
+            // Define data atual como padrão no modal de adicionar gasto
+            const dataInput = document.querySelector('input[name="data_gasto"]');
+            if (dataInput) {
+                const hoje = new Date();
+                const dataFormatada = hoje.toISOString().split('T')[0];
+                dataInput.value = dataFormatada;
+            }
+        });
+        
+        // Funções da Regra 50-30-20
+        function calcularRegra5030() {
+            const salarioInput = document.querySelector('input[name="salario"]');
+            const regra5030Div = document.getElementById('regra5030');
+            
+            if (salarioInput.value && parseFloat(salarioInput.value) > 0) {
+                const salario = parseFloat(salarioInput.value);
+                
+                const essenciais = salario * 0.5;
+                const desejos = salario * 0.3;
+                const poupanca = salario * 0.2;
+                
+                document.getElementById('essenciais').textContent = 'R$ ' + essenciais.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                document.getElementById('desejos').textContent = 'R$ ' + desejos.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                document.getElementById('poupanca').textContent = 'R$ ' + poupanca.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                
+                // Atualiza modo customizado também
+                atualizarCustomizado();
+                
+                regra5030Div.classList.remove('hidden');
+            } else {
+                regra5030Div.classList.add('hidden');
+            }
+        }
+        
+        function toggleModo(modo) {
+            const btnPadrao = document.getElementById('btnPadrao');
+            const btnCustomizado = document.getElementById('btnCustomizado');
+            const modoPadrao = document.getElementById('modoPadrao');
+            const modoCustomizado = document.getElementById('modoCustomizado');
+            
+            if (modo === 'padrao') {
+                btnPadrao.className = 'px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm transition';
+                btnCustomizado.className = 'px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm transition';
+                modoPadrao.classList.remove('hidden');
+                modoCustomizado.classList.add('hidden');
+            } else {
+                btnPadrao.className = 'px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm transition';
+                btnCustomizado.className = 'px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm transition';
+                modoPadrao.classList.add('hidden');
+                modoCustomizado.classList.remove('hidden');
+                atualizarCustomizado();
+            }
+        }
+        
+        function atualizarCustomizado() {
+            const salarioInput = document.querySelector('input[name="salario"]');
+            if (!salarioInput.value || parseFloat(salarioInput.value) <= 0) return;
+            
+            const salario = parseFloat(salarioInput.value);
+            const percGastos = parseInt(document.getElementById('percGastos').value);
+            const percInvest = parseInt(document.getElementById('percInvest').value);
+            
+            // Ajusta automaticamente para somar 100%
+            const percReserva = 100 - percGastos - percInvest;
+            
+            const valorGastos = salario * (percGastos / 100);
+            const valorInvest = salario * (percInvest / 100);
+            const valorReserva = salario * (percReserva / 100);
+            
+            document.getElementById('percGastosLabel').textContent = percGastos + '%';
+            document.getElementById('percInvestLabel').textContent = percInvest + '%';
+            
+            document.getElementById('valorGastos').textContent = 'R$ ' + valorGastos.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+            document.getElementById('valorInvest').textContent = 'R$ ' + valorInvest.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+            document.getElementById('valorReserva').textContent = 'R$ ' + valorReserva.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+        }
+        
+        function aplicarCustomizado(tipo) {
+            const salarioInput = document.querySelector('input[name="salario"]');
+            const metaInput = document.querySelector('input[name="meta"]');
+            
+            if (salarioInput.value && parseFloat(salarioInput.value) > 0) {
+                const salario = parseFloat(salarioInput.value);
+                const percGastos = parseInt(document.getElementById('percGastos').value);
+                const percInvest = parseInt(document.getElementById('percInvest').value);
+                
+                if (tipo === 'gastos') {
+                    // Aplica apenas % de gastos como limite
+                    metaInput.value = (salario * (percGastos / 100)).toFixed(2);
+                } else if (tipo === 'total') {
+                    // Aplica gastos + investimentos como limite
+                    metaInput.value = (salario * ((percGastos + percInvest) / 100)).toFixed(2);
+                }
+            }
+        }
+        
+        // Funções de edição de gastos
+        function editarGasto(id, estabelecimento, categoria, valor, data) {
+            document.getElementById('editGastoId').value = id;
+            document.getElementById('editEstabelecimento').value = estabelecimento;
+            document.getElementById('editCategoria').value = categoria;
+            document.getElementById('editValor').value = valor;
+            document.getElementById('editDataGasto').value = data;
+            document.getElementById('modalEditarGasto').classList.remove('hidden');
+        }
+        
+        function excluirGasto(id) {
+            if (confirm('Tem certeza que deseja excluir este gasto?')) {
+                fetch('/excluir-gasto', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'gasto_id=' + id
+                })
+                .then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Erro ao excluir gasto');
+                    }
+                })
+                .catch(error => {
+                    alert('Erro ao excluir gasto');
+                });
+            }
+        }
+        
+        function aplicarSugestao(tipo) {
+            const salarioInput = document.querySelector('input[name="salario"]');
+            const metaInput = document.querySelector('input[name="meta"]');
+            
+            if (salarioInput.value && parseFloat(salarioInput.value) > 0) {
+                const salario = parseFloat(salarioInput.value);
+                
+                if (tipo === 'essenciais') {
+                    // Aplica 50% como limite de gastos
+                    metaInput.value = (salario * 0.5).toFixed(2);
+                } else if (tipo === 'gastos') {
+                    // Aplica 80% como limite de gastos (50% essenciais + 30% desejos)
+                    metaInput.value = (salario * 0.8).toFixed(2);
+                }
+            }
+        }
+        
         // Busca
         document.getElementById('searchInput').addEventListener('input', function(e) {
             const search = e.target.value.toLowerCase();
@@ -350,6 +1032,7 @@
         
         function atualizarGrafico(labelsData, gastosDataArray) {
             const maxGasto = gastosDataArray.length > 0 ? Math.max(...gastosDataArray) : 0;
+            const isDark = document.documentElement.classList.contains('dark');
             
             let yMax;
             if (salario > 0) {
@@ -362,7 +1045,7 @@
             const datasets = [{
                 label: 'Gastos',
                 data: gastosDataArray,
-                backgroundColor: '#10B981',
+                backgroundColor: isDark ? '#34D399' : '#10B981',
                 borderRadius: 6,
                 barThickness: 40
             }];
@@ -371,7 +1054,7 @@
                 datasets.push({
                     label: 'Meta de Gastos',
                     data: Array(labelsData.length).fill(metaMensal),
-                    borderColor: '#EF4444',
+                    borderColor: isDark ? '#F87171' : '#EF4444',
                     borderWidth: 3,
                     type: 'line',
                     fill: false
@@ -382,7 +1065,7 @@
                 datasets.push({
                     label: 'Previsão (Média)',
                     data: Array(labelsData.length).fill(previsao),
-                    borderColor: '#FBBF24',
+                    borderColor: isDark ? '#FCD34D' : '#FBBF24',
                     borderWidth: 2,
                     borderDash: [4, 4],
                     type: 'line',
@@ -396,6 +1079,10 @@
                 chartInstance.data.labels = labelsData;
                 chartInstance.data.datasets = datasets;
                 chartInstance.options.scales.y.max = yMax;
+                chartInstance.options.scales.y.ticks.color = isDark ? '#D1D5DB' : '#6B7280';
+                chartInstance.options.scales.x.ticks.color = isDark ? '#D1D5DB' : '#6B7280';
+                chartInstance.options.scales.y.grid.color = isDark ? 'rgba(75, 85, 99, 0.3)' : 'rgba(0,0,0,0.05)';
+                chartInstance.options.plugins.legend.labels.color = isDark ? '#D1D5DB' : '#374151';
                 chartInstance.update();
             } else {
                 chartInstance = new Chart(document.getElementById('evolucaoChart'), {
@@ -411,9 +1098,18 @@
                             legend: { 
                                 display: true, 
                                 position: 'top',
-                                labels: { padding: 15, usePointStyle: true }
+                                labels: { 
+                                    padding: 15, 
+                                    usePointStyle: true,
+                                    color: isDark ? '#D1D5DB' : '#374151'
+                                }
                             },
                             tooltip: {
+                                backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+                                titleColor: isDark ? '#F9FAFB' : '#111827',
+                                bodyColor: isDark ? '#D1D5DB' : '#374151',
+                                borderColor: isDark ? '#374151' : '#E5E7EB',
+                                borderWidth: 1,
                                 callbacks: {
                                     footer: function(context) {
                                         if (salario > 0) {
@@ -429,11 +1125,15 @@
                                 beginAtZero: true,
                                 max: yMax,
                                 ticks: { 
-                                    callback: v => 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 0})
+                                    callback: v => 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 0}),
+                                    color: isDark ? '#D1D5DB' : '#6B7280'
                                 },
-                                grid: { color: 'rgba(0,0,0,0.05)' }
+                                grid: { color: isDark ? 'rgba(75, 85, 99, 0.3)' : 'rgba(0,0,0,0.05)' }
                             },
-                            x: { grid: { display: false } }
+                            x: { 
+                                grid: { display: false },
+                                ticks: { color: isDark ? '#D1D5DB' : '#6B7280' }
+                            }
                         }
                     }
                 });
@@ -444,15 +1144,18 @@
         atualizarGrafico(labels, gastosData);
 
         // Gráfico Pizza
-        new Chart(document.getElementById('gastosChart'), {
+        const isDark = document.documentElement.classList.contains('dark');
+        const pizzaChart = new Chart(document.getElementById('gastosChart'), {
             type: 'doughnut',
             data: {
                 labels: {{ chart_labels_json | safe }},
                 datasets: [{
                     data: {{ chart_data_json | safe }},
-                    backgroundColor: ['#3B82F6', '#FBBF24', '#10B981', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'],
+                    backgroundColor: isDark ? 
+                        ['#60A5FA', '#FBBF24', '#34D399', '#F87171', '#A78BFA', '#F472B6', '#2DD4BF', '#FB923C'] :
+                        ['#3B82F6', '#FBBF24', '#10B981', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'],
                     borderWidth: 2,
-                    borderColor: '#fff'
+                    borderColor: isDark ? '#1F2937' : '#fff'
                 }]
             },
             options: {
@@ -464,9 +1167,17 @@
                         labels: { 
                             usePointStyle: true, 
                             padding: 15,
-                            font: { size: 11 }
+                            font: { size: 11 },
+                            color: isDark ? '#D1D5DB' : '#374151'
                         } 
-                    } 
+                    },
+                    tooltip: {
+                        backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+                        titleColor: isDark ? '#F9FAFB' : '#111827',
+                        bodyColor: isDark ? '#D1D5DB' : '#374151',
+                        borderColor: isDark ? '#374151' : '#E5E7EB',
+                        borderWidth: 1
+                    }
                 }
             }
         });
