@@ -4,9 +4,9 @@ import csv
 import io
 import bcrypt
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, Depends, Header, HTTPException, status, Form, Query, Cookie
+from fastapi import FastAPI, Request, Depends, Header, HTTPException, status, Form, Query, Cookie, UploadFile, File
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlmodel import Session, select, func
@@ -19,7 +19,7 @@ load_dotenv()
 
 from .database import create_db_and_tables, get_session
 from .models import Gasto, Configuracao, Usuario
-from .services import processar_texto_notificacao, calcular_mes_referencia, get_dia_fechamento, set_dia_fechamento, get_meta_mensal, set_meta_mensal, get_salario, set_salario
+from .services import processar_texto_notificacao, calcular_mes_referencia, get_dia_fechamento, set_dia_fechamento, get_meta_mensal, set_meta_mensal, get_salario, set_salario, processar_extrato_csv, get_regras_categorizacao
 
 app = FastAPI(title="Finance Tracker")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -340,6 +340,74 @@ async def exportar_csv(mes: str = Query(None), session: Session = Depends(get_se
     
     output.seek(0)
     return StreamingResponse(io.BytesIO(output.getvalue().encode("utf-8")), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=gastos_{mes_ref}.csv"})
+
+@app.post("/importar-extrato")
+async def importar_extrato(arquivo: UploadFile = File(...), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+    if not arquivo.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Apenas arquivos CSV são suportados")
+    
+    conteudo = (await arquivo.read()).decode('utf-8')
+    gastos = processar_extrato_csv(conteudo, session, usuario.id)
+    
+    # Retorna os gastos para revisão
+    return JSONResponse(content={"gastos": gastos})
+
+@app.post("/confirmar-importacao")
+async def confirmar_importacao(gastos_json: str = Form(...), banco: str = Form(...), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+    import json
+    gastos = json.loads(gastos_json)
+    
+    dia_fechamento = get_dia_fechamento(session, usuario.id)
+    
+    for gasto_data in gastos:
+        data_compra = datetime.strptime(gasto_data['data'], '%Y-%m-%d')
+        
+        # Calcula mês de referência
+        if data_compra.day >= dia_fechamento:
+            mes_referencia = f"{data_compra.year}-{data_compra.month:02d}"
+        else:
+            if data_compra.month == 1:
+                mes_referencia = f"{data_compra.year - 1}-12"
+            else:
+                mes_referencia = f"{data_compra.year}-{data_compra.month - 1:02d}"
+        
+        novo_gasto = Gasto(
+            usuario_id=usuario.id,
+            valor=gasto_data['valor'],
+            estabelecimento=gasto_data['estabelecimento'],
+            categoria=gasto_data['categoria'],
+            banco=banco,
+            raw_text=f"Importado: {gasto_data['estabelecimento']}",
+            data_compra=data_compra,
+            mes_referencia=mes_referencia
+        )
+        session.add(novo_gasto)
+    
+    session.commit()
+    return RedirectResponse(url="/", status_code=303)
+
+@app.get("/regras-categorizacao")
+async def obter_regras(session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+    regras = get_regras_categorizacao(session, usuario.id)
+    return JSONResponse(content=regras)
+
+@app.post("/salvar-regras-categorizacao")
+async def salvar_regras(regras_json: str = Form(...), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):
+    from .models import Configuracao
+    
+    config = session.exec(select(Configuracao).where(
+        Configuracao.chave == "regras_categorizacao",
+        Configuracao.usuario_id == usuario.id
+    )).first()
+    
+    if config:
+        config.valor = regras_json
+    else:
+        config = Configuracao(chave="regras_categorizacao", valor=regras_json, usuario_id=usuario.id)
+        session.add(config)
+    
+    session.commit()
+    return {"status": "ok"}
 
 @app.post("/trocar-senha")
 async def trocar_senha(senha_atual: str = Form(...), senha_nova: str = Form(...), senha_confirma: str = Form(...), session: Session = Depends(get_session), usuario: Usuario = Depends(get_current_user)):

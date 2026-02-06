@@ -90,5 +90,7 @@
   "3_months": "3 Months",
   "6_months": "6 Months",
   "12_months": "12 Months",
-  "day": "Day"
+  "day": "Day",
+  "import_statement": "Import Statement",
+  "categorization_rules": "Categorization Rules"
 }
